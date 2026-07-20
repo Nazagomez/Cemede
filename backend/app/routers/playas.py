@@ -41,7 +41,7 @@ def get_configuracion(
         area_por_visitante_m2=float(config.area_por_visitante_m2),
         periodo_horas=config.periodo_horas,
         tiempo_permanencia_horas=float(config.tiempo_permanencia_horas),
-        capacidad_manejo=float(config.capidad_manejo),
+        capacidad_manejo=float(config.capacidad_manejo),
         updated_at=config.updated_at,
     )
 

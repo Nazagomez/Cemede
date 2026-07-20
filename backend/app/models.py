@@ -9,6 +9,11 @@ from app.database import Base
 from app.enums import MetodoCcr, RolUsuario, TipoEvento
 
 
+def enum_values(enum_class: type) -> list[str]:
+    """Map SQLAlchemy Enum columns to Python enum values stored in MySQL."""
+    return [member.value for member in enum_class]
+
+
 class Usuario(Base):
     """System user."""
 
@@ -18,7 +23,11 @@ class Usuario(Base):
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    rol: Mapped[RolUsuario] = mapped_column(Enum(RolUsuario), nullable=False, default=RolUsuario.INVESTIGADOR)
+    rol: Mapped[RolUsuario] = mapped_column(
+        Enum(RolUsuario, values_callable=enum_values),
+        nullable=False,
+        default=RolUsuario.INVESTIGADOR,
+    )
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -80,7 +89,7 @@ class EventoAmbiental(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     playa_id: Mapped[int] = mapped_column(ForeignKey("playa.id"), nullable=False)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"), nullable=False)
-    tipo: Mapped[TipoEvento] = mapped_column(Enum(TipoEvento), nullable=False)
+    tipo: Mapped[TipoEvento] = mapped_column(Enum(TipoEvento, values_callable=enum_values), nullable=False)
     titulo: Mapped[str] = mapped_column(String(200), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text)
     fecha_inicio: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -120,7 +129,11 @@ class EstimacionCapacidad(Base):
     cce: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     visitantes_actuales: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     porcentaje_ocupacion: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False, default=0)
-    metodo_ccr: Mapped[MetodoCcr] = mapped_column(Enum(MetodoCcr), nullable=False, default=MetodoCcr.FORMULA)
+    metodo_ccr: Mapped[MetodoCcr] = mapped_column(
+        Enum(MetodoCcr, values_callable=enum_values),
+        nullable=False,
+        default=MetodoCcr.FORMULA,
+    )
 
 
 class Notificacion(Base):

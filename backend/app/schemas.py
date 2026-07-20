@@ -112,6 +112,26 @@ class OcupacionResponse(BaseModel):
     fecha_consulta: datetime
 
 
+class RegistroVisitanteHistorialItem(BaseModel):
+    """Visitor record item for history listing."""
+
+    id: int
+    playa_id: int
+    playa_nombre: str | None = None
+    fecha_entrada: datetime
+    fecha_salida: datetime | None
+    cantidad_personas: int
+
+
+class VisitanteHistorialResponse(BaseModel):
+    """Paginated visitor history response."""
+
+    total: int
+    page: int
+    limit: int
+    registros: list[RegistroVisitanteHistorialItem]
+
+
 class EventoAmbientalRequest(BaseModel):
     """Environmental event payload."""
 

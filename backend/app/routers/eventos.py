@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.database import get_db
+from app.enums import TipoEvento
 from app.models import EventoAmbiental, FactorCorreccion, Playa, Usuario
 from app.schemas import EventoAmbientalRequest, EventoAmbientalResponse
 from app.services.capacidad_service import calcular_factor_correccion
@@ -60,6 +61,50 @@ def crear_evento(
         activo=evento.activo,
         mensaje=f"Evento registrado. Factor de corrección = {factor}",
     )
+
+
+def build_evento_response(evento: EventoAmbiental, playa_nombre: str | None) -> EventoAmbientalResponse:
+    """Build environmental event API response."""
+    factor = calcular_factor_correccion(float(evento.parte_afectada), float(evento.totalidad_analizada))
+    return EventoAmbientalResponse(
+        id=evento.id,
+        playa_id=evento.playa_id,
+        playa_nombre=playa_nombre,
+        tipo=evento.tipo,
+        titulo=evento.titulo,
+        descripcion=evento.descripcion,
+        fecha_inicio=evento.fecha_inicio,
+        fecha_fin=evento.fecha_fin,
+        factor_correccion=factor,
+        activo=evento.activo,
+    )
+
+
+@router.get("", response_model=list[EventoAmbientalResponse])
+def list_eventos(
+    playa_id: int | None = None,
+    tipo: TipoEvento | None = None,
+    activo: bool | None = None,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> list[EventoAmbientalResponse]:
+    """List environmental events with optional filters."""
+    query = db.query(EventoAmbiental)
+    if playa_id is not None:
+        query = query.filter(EventoAmbiental.playa_id == playa_id)
+    if tipo is not None:
+        query = query.filter(EventoAmbiental.tipo == tipo)
+    if activo is not None:
+        query = query.filter(EventoAmbiental.activo.is_(activo))
+    eventos = query.order_by(EventoAmbiental.fecha_inicio.desc()).all()
+    playa_ids = {evento.playa_id for evento in eventos}
+    playa_names: dict[int, str] = {}
+    if playa_ids:
+        playa_names = {
+            playa.id: playa.nombre
+            for playa in db.query(Playa).filter(Playa.id.in_(playa_ids)).all()
+        }
+    return [build_evento_response(evento, playa_names.get(evento.playa_id)) for evento in eventos]
 
 
 @router.get("/activos/{playa_id}", response_model=list[EventoAmbientalResponse])
