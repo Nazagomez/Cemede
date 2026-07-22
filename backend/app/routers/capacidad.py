@@ -16,10 +16,16 @@ from app.services.capacidad_service import construir_estimacion
 router = APIRouter(prefix="/capacidad", tags=["Capacidad"])
 
 
-def _get_playa_and_config(db: Session, playa_id: int) -> tuple[Playa, ConfiguracionCcf]:
+def _get_playa(db: Session, playa_id: int) -> Playa:
+    """Return beach by id or raise 404."""
     playa = db.query(Playa).filter(Playa.id == playa_id).first()
     if playa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
+    return playa
+
+
+def _get_playa_and_config(db: Session, playa_id: int) -> tuple[Playa, ConfiguracionCcf]:
+    playa = _get_playa(db, playa_id)
     config = db.query(ConfiguracionCcf).filter(ConfiguracionCcf.playa_id == playa_id).first()
     if config is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuración no encontrada")
@@ -86,6 +92,7 @@ def get_historial(
     _: Usuario = Depends(get_current_user),
 ) -> dict[str, object]:
     """Get historical capacity estimations."""
+    _get_playa(db, playa_id)
     estimaciones = (
         db.query(EstimacionCapacidad)
         .filter(EstimacionCapacidad.playa_id == playa_id)
