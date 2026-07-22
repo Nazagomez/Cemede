@@ -70,6 +70,13 @@ def calcular_estado_ocupacion(porcentaje: float) -> str:
     return "critico"
 
 
+def calcular_porcentaje_ocupacion(visitantes: int, ccr_formula: float) -> float:
+    """Calculate occupancy percentage."""
+    if ccr_formula <= 0:
+        return 100.0 if visitantes > 0 else 0.0
+    return round((visitantes / ccr_formula) * 100, 2)
+
+
 def construir_estimacion(
     db: Session,
     playa: Playa,
@@ -88,7 +95,7 @@ def construir_estimacion(
     ccr_formula = calcular_ccr(ccf, factores if factores else [1.0])
     cce = calcular_cce(ccr_formula, float(config.capacidad_manejo))
     visitantes = obtener_visitantes_activos(db, playa.id)
-    porcentaje = round((visitantes / ccr_formula) * 100, 2) if ccr_formula > 0 else 0.0
+    porcentaje = calcular_porcentaje_ocupacion(visitantes, ccr_formula)
     eventos_activos = len(factores)
     estimacion_id: int | None = None
     if guardar:
