@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, playas
+from app.routers import auth, playas, visitantes
 
 app = FastAPI(
     title="CEMEDE - Capacidad de Carga Turística",
@@ -22,6 +22,7 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(playas.router, prefix=settings.api_prefix)
+app.include_router(visitantes.router, prefix=settings.api_prefix)
 
 
 @app.get("/health")
