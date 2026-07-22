@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.database import get_db
-from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, Playa, Usuario
+from app.models import ConfiguracionCcf, EstimacionCapacidad, Playa, Usuario
+from app.routers.playas import get_active_playa
 from app.schemas import DashboardPlayaResponse, PlayaResponse
-from app.services.capacidad_service import calcular_factor_correccion, construir_estimacion
+from app.services.capacidad_service import build_eventos_activos_resumen, construir_estimacion
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -21,18 +22,11 @@ def get_dashboard_playa(
     _: Usuario = Depends(get_current_user),
 ) -> DashboardPlayaResponse:
     """Get dashboard summary for one beach."""
-    playa = db.query(Playa).filter(Playa.id == playa_id).first()
-    if playa is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
+    playa = get_active_playa(db, playa_id)
     config = db.query(ConfiguracionCcf).filter(ConfiguracionCcf.playa_id == playa_id).first()
     if config is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuración no encontrada")
     data = construir_estimacion(db, playa, config)
-    eventos = (
-        db.query(EventoAmbiental)
-        .filter(EventoAmbiental.playa_id == playa_id, EventoAmbiental.activo.is_(True))
-        .all()
-    )
     ultimas = (
         db.query(EstimacionCapacidad)
         .filter(EstimacionCapacidad.playa_id == playa_id)
@@ -53,18 +47,7 @@ def get_dashboard_playa(
             "cce": float(data["cce"]),
             "metodo_ccr": str(data["metodo_ccr"]),
         },
-        eventos_activos=[
-            {
-                "id": evento.id,
-                "tipo": evento.tipo.value,
-                "titulo": evento.titulo,
-                "factor_correccion": calcular_factor_correccion(
-                    float(evento.parte_afectada),
-                    float(evento.totalidad_analizada),
-                ),
-            }
-            for evento in eventos
-        ],
+        eventos_activos=build_eventos_activos_resumen(db, playa_id),
         ultimas_estimaciones=[
             {
                 "fecha": item.fecha_calculo.isoformat(),
@@ -88,11 +71,6 @@ def get_dashboard_general(
         if config is None:
             continue
         data = construir_estimacion(db, playa, config)
-        eventos_count = (
-            db.query(EventoAmbiental)
-            .filter(EventoAmbiental.playa_id == playa.id, EventoAmbiental.activo.is_(True))
-            .count()
-        )
         items.append(
             {
                 "id": playa.id,
@@ -100,7 +78,7 @@ def get_dashboard_general(
                 "visitantes_actuales": int(data["visitantes_actuales"]),
                 "porcentaje_ocupacion": float(data["porcentaje_ocupacion"]),
                 "estado": str(data["estado"]),
-                "eventos_activos": eventos_count,
+                "eventos_activos": int(data["eventos_activos"]),
             }
         )
     return {

@@ -10,28 +10,13 @@ from app.database import get_db
 from app.enums import TipoEvento
 from app.models import EventoAmbiental, FactorCorreccion, Playa, Usuario
 from app.schemas import EventoAmbientalRequest, EventoAmbientalResponse
-from app.services.capacidad_service import calcular_factor_correccion
+from app.services.capacidad_service import (
+    calcular_factor_correccion,
+    get_stored_factors_by_evento,
+    resolve_factor_correccion,
+)
 
 router = APIRouter(prefix="/eventos", tags=["Eventos"])
-
-
-def get_stored_factors_by_evento(db: Session, evento_ids: list[int]) -> dict[int, float]:
-    """Return persisted correction factors keyed by event id."""
-    if not evento_ids:
-        return {}
-    factores = db.query(FactorCorreccion).filter(FactorCorreccion.evento_id.in_(evento_ids)).all()
-    return {factor.evento_id: float(factor.valor) for factor in factores}
-
-
-def get_stored_factor_correccion(db: Session, evento_id: int) -> float:
-    """Return persisted correction factor for an event."""
-    factor = db.query(FactorCorreccion).filter(FactorCorreccion.evento_id == evento_id).first()
-    if factor is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Factor de corrección no encontrado",
-        )
-    return float(factor.valor)
 
 
 def build_evento_response(
@@ -61,24 +46,16 @@ def build_evento_responses(
     eventos: list[EventoAmbiental],
     playa_names: dict[int, str],
 ) -> list[EventoAmbientalResponse]:
-    """Build event responses using persisted correction factors."""
+    """Build event responses using the same factor resolution as capacity calculations."""
     stored_factors = get_stored_factors_by_evento(db, [evento.id for evento in eventos])
-    responses: list[EventoAmbientalResponse] = []
-    for evento in eventos:
-        factor = stored_factors.get(evento.id)
-        if factor is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Factor de corrección no encontrado para evento {evento.id}",
-            )
-        responses.append(
-            build_evento_response(
-                evento=evento,
-                playa_nombre=playa_names.get(evento.playa_id),
-                factor_correccion=factor,
-            )
+    return [
+        build_evento_response(
+            evento=evento,
+            playa_nombre=playa_names.get(evento.playa_id),
+            factor_correccion=resolve_factor_correccion(evento, stored_factors),
         )
-    return responses
+        for evento in eventos
+    ]
 
 
 @router.post("", response_model=EventoAmbientalResponse, status_code=status.HTTP_201_CREATED)
@@ -180,7 +157,8 @@ def cerrar_evento(
     if not evento.activo:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Evento ya cerrado")
     playa = db.query(Playa).filter(Playa.id == evento.playa_id).first()
-    factor = get_stored_factor_correccion(db, evento.id)
+    stored_factors = get_stored_factors_by_evento(db, [evento.id])
+    factor = resolve_factor_correccion(evento, stored_factors)
     evento.activo = False
     evento.fecha_fin = datetime.utcnow()
     db.commit()
