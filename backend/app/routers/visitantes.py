@@ -1,14 +1,21 @@
 """Visitor registration routes."""
 
-from datetime import datetime
+from datetime import date, datetime, time
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.database import get_db
 from app.models import Playa, RegistroVisitante, Usuario
-from app.schemas import EntradaVisitanteRequest, OcupacionResponse, RegistroVisitanteResponse, SalidaVisitanteRequest
+from app.schemas import (
+    EntradaVisitanteRequest,
+    OcupacionResponse,
+    RegistroVisitanteHistorialItem,
+    RegistroVisitanteResponse,
+    SalidaVisitanteRequest,
+    VisitanteHistorialResponse,
+)
 from app.services.capacidad_service import obtener_visitantes_activos
 
 router = APIRouter(prefix="/visitantes", tags=["Visitantes"])
@@ -98,4 +105,54 @@ def get_visitantes_activos(
         total_visitantes=obtener_visitantes_activos(db, playa_id),
         registros_activos=len(registros),
         fecha_consulta=datetime.utcnow(),
+    )
+
+
+@router.get("/historial", response_model=VisitanteHistorialResponse)
+def get_historial_visitantes(
+    playa_id: int | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> VisitanteHistorialResponse:
+    """Get visitor registration history with optional filters."""
+    query = db.query(RegistroVisitante)
+    if playa_id is not None:
+        query = query.filter(RegistroVisitante.playa_id == playa_id)
+    if fecha_inicio is not None:
+        query = query.filter(RegistroVisitante.fecha_entrada >= datetime.combine(fecha_inicio, time.min))
+    if fecha_fin is not None:
+        query = query.filter(RegistroVisitante.fecha_entrada <= datetime.combine(fecha_fin, time.max))
+    total = query.count()
+    registros = (
+        query.order_by(RegistroVisitante.fecha_entrada.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    playa_ids = {registro.playa_id for registro in registros}
+    playa_names: dict[int, str] = {}
+    if playa_ids:
+        playa_names = {
+            playa.id: playa.nombre
+            for playa in db.query(Playa).filter(Playa.id.in_(playa_ids)).all()
+        }
+    return VisitanteHistorialResponse(
+        total=total,
+        page=page,
+        limit=limit,
+        registros=[
+            RegistroVisitanteHistorialItem(
+                id=registro.id,
+                playa_id=registro.playa_id,
+                playa_nombre=playa_names.get(registro.playa_id),
+                fecha_entrada=registro.fecha_entrada,
+                fecha_salida=registro.fecha_salida,
+                cantidad_personas=registro.cantidad_personas,
+            )
+            for registro in registros
+        ],
     )

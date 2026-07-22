@@ -61,6 +61,7 @@ class ConfiguracionCcfResponse(BaseModel):
     tiempo_permanencia_horas: float
     capacidad_manejo: float
     updated_at: datetime | None = None
+    mensaje: str | None = None
 
 
 class ConfiguracionCcfUpdate(BaseModel):
@@ -110,6 +111,26 @@ class OcupacionResponse(BaseModel):
     total_visitantes: int
     registros_activos: int
     fecha_consulta: datetime
+
+
+class RegistroVisitanteHistorialItem(BaseModel):
+    """Visitor record item for history listing."""
+
+    id: int
+    playa_id: int
+    playa_nombre: str | None = None
+    fecha_entrada: datetime
+    fecha_salida: datetime | None
+    cantidad_personas: int
+
+
+class VisitanteHistorialResponse(BaseModel):
+    """Paginated visitor history response."""
+
+    total: int
+    page: int
+    limit: int
+    registros: list[RegistroVisitanteHistorialItem]
 
 
 class EventoAmbientalRequest(BaseModel):

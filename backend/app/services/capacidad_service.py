@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.enums import MetodoCcr
-from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, Playa, RegistroVisitante
+from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, FactorCorreccion, Playa, RegistroVisitante
 
 
 def calcular_factor_correccion(magnitud_limitante: float, magnitud_total: float) -> float:
@@ -48,17 +48,55 @@ def obtener_visitantes_activos(db: Session, playa_id: int) -> int:
     return sum(registro.cantidad_personas for registro in registros)
 
 
-def obtener_factores_activos(db: Session, playa_id: int) -> list[float]:
-    """Get correction factors from active environmental events."""
-    eventos = (
+def get_stored_factors_by_evento(db: Session, evento_ids: list[int]) -> dict[int, float]:
+    """Return persisted correction factors keyed by event id."""
+    if not evento_ids:
+        return {}
+    factores = db.query(FactorCorreccion).filter(FactorCorreccion.evento_id.in_(evento_ids)).all()
+    return {factor.evento_id: float(factor.valor) for factor in factores}
+
+
+def resolve_factor_correccion(evento: EventoAmbiental, stored_factors: dict[int, float]) -> float:
+    """Return persisted factor when available, otherwise compute from magnitudes."""
+    stored_factor = stored_factors.get(evento.id)
+    if stored_factor is not None:
+        return stored_factor
+    return calcular_factor_correccion(float(evento.parte_afectada), float(evento.totalidad_analizada))
+
+
+def obtener_eventos_activos(db: Session, playa_id: int) -> list[EventoAmbiental]:
+    """Return active environmental events for a beach."""
+    return (
         db.query(EventoAmbiental)
         .filter(EventoAmbiental.playa_id == playa_id, EventoAmbiental.activo.is_(True))
         .all()
     )
-    factores: list[float] = []
-    for evento in eventos:
-        factores.append(calcular_factor_correccion(float(evento.parte_afectada), float(evento.totalidad_analizada)))
-    return factores
+
+
+def obtener_factores_activos(db: Session, playa_id: int) -> list[float]:
+    """Get correction factors applied to active environmental events."""
+    eventos = obtener_eventos_activos(db, playa_id)
+    if not eventos:
+        return []
+    stored_factors = get_stored_factors_by_evento(db, [evento.id for evento in eventos])
+    return [resolve_factor_correccion(evento, stored_factors) for evento in eventos]
+
+
+def build_eventos_activos_resumen(db: Session, playa_id: int) -> list[dict[str, float | int | str]]:
+    """Build dashboard summary for active events using the same factors as CCR."""
+    eventos = obtener_eventos_activos(db, playa_id)
+    if not eventos:
+        return []
+    stored_factors = get_stored_factors_by_evento(db, [evento.id for evento in eventos])
+    return [
+        {
+            "id": evento.id,
+            "tipo": evento.tipo.value,
+            "titulo": evento.titulo,
+            "factor_correccion": resolve_factor_correccion(evento, stored_factors),
+        }
+        for evento in eventos
+    ]
 
 
 def calcular_estado_ocupacion(porcentaje: float) -> str:
