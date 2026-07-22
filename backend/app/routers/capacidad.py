@@ -1,6 +1,7 @@
 """Carrying capacity routes."""
 
 from datetime import datetime
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,7 +10,7 @@ from app.core.deps import get_current_user
 from app.database import get_db
 from app.enums import MetodoCcr
 from app.models import ConfiguracionCcf, EstimacionCapacidad, Playa, Usuario
-from app.schemas import CapacidadEstimacionResponse
+from app.schemas import CapacidadCalcularResponse, CapacidadEstimacionResponse
 from app.services.capacidad_service import construir_estimacion
 
 router = APIRouter(prefix="/capacidad", tags=["Capacidad"])
@@ -25,29 +26,55 @@ def _get_playa_and_config(db: Session, playa_id: int) -> tuple[Playa, Configurac
     return playa, config
 
 
+def _build_estimacion_response(playa: Playa, data: dict[str, object]) -> CapacidadEstimacionResponse:
+    """Build capacity estimation API response from service data."""
+    return CapacidadEstimacionResponse(
+        playa_id=playa.id,
+        playa_nombre=playa.nombre,
+        fecha_calculo=cast(datetime, data["fecha_calculo"]),
+        ccf=float(cast(float, data["ccf"])),
+        ccr_formula=float(cast(float, data["ccr_formula"])),
+        ccr_ml=None,
+        ccr_final=float(cast(float, data["ccr_final"])),
+        cce=float(cast(float, data["cce"])),
+        metodo_ccr=MetodoCcr.FORMULA,
+        visitantes_actuales=int(cast(int, data["visitantes_actuales"])),
+        porcentaje_ocupacion=float(cast(float, data["porcentaje_ocupacion"])),
+        eventos_activos=int(cast(int, data["eventos_activos"])),
+        estado=str(data["estado"]),
+    )
+
+
 @router.get("/estimacion/{playa_id}", response_model=CapacidadEstimacionResponse)
 def get_estimacion(
     playa_id: int,
     db: Session = Depends(get_db),
     _: Usuario = Depends(get_current_user),
 ) -> CapacidadEstimacionResponse:
-    """Get CCF, CCR and CCE estimation for a beach."""
+    """Get CCF, CCR and CCE estimation for a beach without persisting."""
+    playa, config = _get_playa_and_config(db, playa_id)
+    data = construir_estimacion(db, playa, config, guardar=False)
+    return _build_estimacion_response(playa, data)
+
+
+@router.post("/calcular/{playa_id}", response_model=CapacidadCalcularResponse, status_code=status.HTTP_201_CREATED)
+def calcular_estimacion(
+    playa_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> CapacidadCalcularResponse:
+    """Recalculate capacity and persist the result in historial."""
     playa, config = _get_playa_and_config(db, playa_id)
     data = construir_estimacion(db, playa, config, guardar=True)
-    return CapacidadEstimacionResponse(
+    estimacion_id = data.get("estimacion_id")
+    if estimacion_id is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No se pudo guardar la estimación")
+    return CapacidadCalcularResponse(
         playa_id=playa.id,
-        playa_nombre=playa.nombre,
-        fecha_calculo=datetime.utcnow(),
-        ccf=float(data["ccf"]),
-        ccr_formula=float(data["ccr_formula"]),
-        ccr_ml=None,
-        ccr_final=float(data["ccr_final"]),
-        cce=float(data["cce"]),
-        metodo_ccr=MetodoCcr.FORMULA,
-        visitantes_actuales=int(data["visitantes_actuales"]),
-        porcentaje_ocupacion=float(data["porcentaje_ocupacion"]),
-        eventos_activos=int(data["eventos_activos"]),
-        estado=str(data["estado"]),
+        estimacion_id=int(cast(int, estimacion_id)),
+        ccf=float(cast(float, data["ccf"])),
+        ccr_final=float(cast(float, data["ccr_final"])),
+        cce=float(cast(float, data["cce"])),
     )
 
 
