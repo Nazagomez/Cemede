@@ -61,6 +61,7 @@ class ConfiguracionCcfResponse(BaseModel):
     tiempo_permanencia_horas: float
     capacidad_manejo: float
     updated_at: datetime | None = None
+    mensaje: str | None = None
 
 
 class ConfiguracionCcfUpdate(BaseModel):
