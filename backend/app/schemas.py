@@ -181,6 +181,17 @@ class CapacidadEstimacionResponse(BaseModel):
     estado: str
 
 
+class CapacidadCalcularResponse(BaseModel):
+    """Persisted capacity calculation response."""
+
+    playa_id: int
+    estimacion_id: int
+    ccf: float
+    ccr_final: float
+    cce: float
+    mensaje: str = "Estimación calculada y guardada correctamente"
+
+
 class DashboardPlayaResponse(BaseModel):
     """Dashboard summary for one beach."""
 

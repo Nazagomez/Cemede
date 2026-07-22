@@ -1,5 +1,7 @@
 """Carrying capacity calculation services (Cifuentes et al., 1999)."""
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.enums import MetodoCcr
@@ -72,8 +74,14 @@ def calcular_estado_ocupacion(porcentaje: float) -> str:
     return "critico"
 
 
-def construir_estimacion(db: Session, playa: Playa, config: ConfiguracionCcf, guardar: bool = False) -> dict[str, float | int | str]:
+def construir_estimacion(
+    db: Session,
+    playa: Playa,
+    config: ConfiguracionCcf,
+    guardar: bool = False,
+) -> dict[str, float | int | str | datetime | None]:
     """Build full capacity estimation for a beach."""
+    fecha_calculo = datetime.utcnow()
     ccf = calcular_ccf(
         float(playa.area_util_m2),
         float(config.area_por_visitante_m2),
@@ -86,9 +94,11 @@ def construir_estimacion(db: Session, playa: Playa, config: ConfiguracionCcf, gu
     visitantes = obtener_visitantes_activos(db, playa.id)
     porcentaje = round((visitantes / ccr_formula) * 100, 2) if ccr_formula > 0 else 0.0
     eventos_activos = len(factores)
+    estimacion_id: int | None = None
     if guardar:
         estimacion = EstimacionCapacidad(
             playa_id=playa.id,
+            fecha_calculo=fecha_calculo,
             ccf=ccf,
             ccr_formula=ccr_formula,
             ccr_ml=None,
@@ -100,7 +110,12 @@ def construir_estimacion(db: Session, playa: Playa, config: ConfiguracionCcf, gu
         )
         db.add(estimacion)
         db.commit()
+        db.refresh(estimacion)
+        fecha_calculo = estimacion.fecha_calculo
+        estimacion_id = estimacion.id
     return {
+        "estimacion_id": estimacion_id,
+        "fecha_calculo": fecha_calculo,
         "ccf": ccf,
         "ccr_formula": ccr_formula,
         "ccr_ml": None,
