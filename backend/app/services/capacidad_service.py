@@ -3,7 +3,7 @@
 from sqlalchemy.orm import Session
 
 from app.enums import MetodoCcr
-from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, Playa, RegistroVisitante
+from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, FactorCorreccion, Playa, RegistroVisitante
 
 
 def calcular_factor_correccion(magnitud_limitante: float, magnitud_total: float) -> float:
@@ -47,16 +47,20 @@ def obtener_visitantes_activos(db: Session, playa_id: int) -> int:
 
 
 def obtener_factores_activos(db: Session, playa_id: int) -> list[float]:
-    """Get correction factors from active environmental events."""
+    """Get persisted correction factors from active environmental events."""
     eventos = (
         db.query(EventoAmbiental)
         .filter(EventoAmbiental.playa_id == playa_id, EventoAmbiental.activo.is_(True))
         .all()
     )
-    factores: list[float] = []
-    for evento in eventos:
-        factores.append(calcular_factor_correccion(float(evento.parte_afectada), float(evento.totalidad_analizada)))
-    return factores
+    if not eventos:
+        return []
+    evento_ids = [evento.id for evento in eventos]
+    stored_factors = {
+        factor.evento_id: float(factor.valor)
+        for factor in db.query(FactorCorreccion).filter(FactorCorreccion.evento_id.in_(evento_ids)).all()
+    }
+    return [stored_factors[evento.id] for evento in eventos if evento.id in stored_factors]
 
 
 def calcular_estado_ocupacion(porcentaje: float) -> str:
