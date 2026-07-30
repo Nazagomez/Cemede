@@ -35,6 +35,12 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p < database/seed.sql
 ```
 
+Si la base ya existía antes del módulo de notificaciones, aplica la migración:
+
+```bash
+mysql -u root -p < database/migration-add-notification-deduplication-key.sql
+```
+
 **Usuarios de prueba** (password: `cemede2026`):
 
 | Email | Rol |
@@ -64,10 +70,19 @@ uvicorn app.main:app --reload --port 8000
 - `GET /api/playas`
 - `GET /api/playas/{id}`
 - `GET /api/playas/{id}/configuracion`
+- `PUT /api/playas/{id}/configuracion`
 - `POST /api/visitantes/entrada`
 - `PUT /api/visitantes/{id}/salida`
 - `GET /api/visitantes/activos/{playa_id}`
+- `GET /api/visitantes/historial`
 - `POST /api/eventos`
+- `GET /api/eventos`
 - `GET /api/eventos/activos/{playa_id}`
+- `PUT /api/eventos/{id}/cerrar`
 - `GET /api/capacidad/estimacion/{playa_id}`
+- `POST /api/capacidad/calcular/{playa_id}`
+- `GET /api/capacidad/historial/{playa_id}`
 - `GET /api/dashboard/{playa_id}`
+- `GET /api/dashboard`
+- `GET /api/notificaciones`
+- `PUT /api/notificaciones/{id}/leida`

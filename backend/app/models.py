@@ -148,4 +148,5 @@ class Notificacion(Base):
     titulo: Mapped[str] = mapped_column(String(200), nullable=False)
     mensaje: Mapped[str] = mapped_column(Text, nullable=False)
     leida: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    deduplication_key: Mapped[str | None] = mapped_column(String(255), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)

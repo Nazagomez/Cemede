@@ -12,6 +12,7 @@ from app.enums import MetodoCcr
 from app.models import ConfiguracionCcf, EstimacionCapacidad, Playa, Usuario
 from app.schemas import CapacidadCalcularResponse, CapacidadEstimacionResponse
 from app.services.capacidad_service import construir_estimacion
+from app.services.notificacion_service import create_occupancy_notifications
 
 router = APIRouter(prefix="/capacidad", tags=["Capacidad"])
 
@@ -75,6 +76,14 @@ def calcular_estimacion(
     estimacion_id = data.get("estimacion_id")
     if estimacion_id is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No se pudo guardar la estimación")
+    create_occupancy_notifications(
+        db=db,
+        playa_id=playa.id,
+        playa_nombre=playa.nombre,
+        estado=str(data["estado"]),
+        porcentaje_ocupacion=float(cast(float, data["porcentaje_ocupacion"])),
+    )
+    db.commit()
     return CapacidadCalcularResponse(
         playa_id=playa.id,
         estimacion_id=int(cast(int, estimacion_id)),

@@ -150,9 +150,7 @@ def construir_estimacion(
             metodo_ccr=MetodoCcr.FORMULA,
         )
         db.add(estimacion)
-        db.commit()
-        db.refresh(estimacion)
-        fecha_calculo = estimacion.fecha_calculo
+        db.flush()
         estimacion_id = estimacion.id
     return {
         "estimacion_id": estimacion_id,

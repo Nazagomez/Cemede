@@ -192,6 +192,27 @@ class CapacidadCalcularResponse(BaseModel):
     mensaje: str = "Estimación calculada y guardada correctamente"
 
 
+class NotificacionResponse(BaseModel):
+    """Authenticated user's notification response."""
+
+    id: int
+    evento_id: int | None
+    playa_id: int
+    playa_nombre: str
+    titulo: str
+    mensaje: str
+    leida: bool
+    created_at: datetime
+
+
+class NotificacionLeidaResponse(BaseModel):
+    """Notification read-status update response."""
+
+    id: int
+    leida: bool
+    mensaje: str = "Notificación marcada como leída"
+
+
 class DashboardPlayaResponse(BaseModel):
     """Dashboard summary for one beach."""
 
