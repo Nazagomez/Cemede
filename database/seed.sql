@@ -68,6 +68,10 @@ INSERT INTO evento_ambiental (
 INSERT INTO factor_correccion (evento_id, nombre_variable, valor) VALUES
 (1, 'marea_alta', 0.8889);
 
+INSERT INTO notificacion (usuario_id, evento_id, playa_id, titulo, mensaje) VALUES
+(1, 1, 1, 'Evento ambiental reportado', 'Se reportó marea_alta en Junquillal de la Cruz'),
+(2, 1, 1, 'Evento ambiental reportado', 'Se reportó marea_alta en Junquillal de la Cruz');
+
 -- Registros de visitantes de ejemplo (activos)
 INSERT INTO registro_visitante (playa_id, usuario_id, fecha_entrada, cantidad_personas) VALUES
 (1, 2, DATE_SUB(NOW(), INTERVAL 2 HOUR), 3),
