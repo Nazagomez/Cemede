@@ -43,5 +43,6 @@ def mark_notificacion_as_read(
             detail="Notificación no encontrada",
         )
     notificacion.leida = True
+    notificacion.deduplication_key = None
     db.commit()
     return NotificacionLeidaResponse(id=notificacion.id, leida=notificacion.leida)

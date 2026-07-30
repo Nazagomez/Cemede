@@ -1,5 +1,6 @@
 """Notification business logic."""
 
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
 from app.models import EventoAmbiental, Notificacion, Playa, Usuario
@@ -86,33 +87,26 @@ def create_occupancy_notifications(
     titulo = OCCUPANCY_NOTIFICATION_TITLES.get(estado)
     if titulo is None:
         return
-    usuario_ids = {
+    usuario_ids = [
         usuario_id
         for usuario_id, in db.query(Usuario.id).filter(Usuario.activo.is_(True)).all()
-    }
-    notified_user_ids = {
-        usuario_id
-        for usuario_id, in (
-            db.query(Notificacion.usuario_id)
-            .filter(
-                Notificacion.playa_id == playa_id,
-                Notificacion.titulo == titulo,
-                Notificacion.leida.is_(False),
-            )
-            .all()
-        )
-    }
-    pending_user_ids = usuario_ids - notified_user_ids
-    notifications = [
-        Notificacion(
-            usuario_id=usuario_id,
-            playa_id=playa_id,
-            titulo=titulo,
-            mensaje=(
+    ]
+    notification_values = [
+        {
+            "usuario_id": usuario_id,
+            "playa_id": playa_id,
+            "titulo": titulo,
+            "mensaje": (
                 f"La ocupación de {playa_nombre} alcanzó "
                 f"{porcentaje_ocupacion:.2f}% ({estado})"
             ),
-        )
-        for usuario_id in pending_user_ids
+            "deduplication_key": f"occupancy:{usuario_id}:{playa_id}:{estado}",
+        }
+        for usuario_id in usuario_ids
     ]
-    db.add_all(notifications)
+    if notification_values:
+        statement = mysql_insert(Notificacion).values(notification_values)
+        statement = statement.on_duplicate_key_update(
+            deduplication_key=statement.inserted.deduplication_key,
+        )
+        db.execute(statement)

@@ -116,7 +116,9 @@ CREATE TABLE IF NOT EXISTS notificacion (
   titulo VARCHAR(200) NOT NULL,
   mensaje TEXT NOT NULL,
   leida BOOLEAN NOT NULL DEFAULT FALSE,
+  deduplication_key VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uq_notificacion_deduplication_key UNIQUE (deduplication_key),
   CONSTRAINT fk_notificacion_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id),
   CONSTRAINT fk_notificacion_evento FOREIGN KEY (evento_id) REFERENCES evento_ambiental(id),
   CONSTRAINT fk_notificacion_playa FOREIGN KEY (playa_id) REFERENCES playa(id)

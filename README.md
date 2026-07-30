@@ -35,6 +35,12 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p < database/seed.sql
 ```
 
+Si la base ya existía antes del módulo de notificaciones, aplica la migración:
+
+```bash
+mysql -u root -p < database/migration-add-notification-deduplication-key.sql
+```
+
 **Usuarios de prueba** (password: `cemede2026`):
 
 | Email | Rol |
