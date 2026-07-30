@@ -2,8 +2,10 @@
 
 from sqlalchemy.orm import Session
 
-from app.models import Notificacion, Playa
+from app.models import EventoAmbiental, Notificacion, Playa, Usuario
 from app.schemas import NotificacionResponse
+
+EVENTO_NOTIFICATION_TITLE = "Evento ambiental reportado"
 
 
 def build_notificacion_response(
@@ -41,3 +43,26 @@ def list_user_notifications(
         build_notificacion_response(notificacion, playa_nombre)
         for notificacion, playa_nombre in rows
     ]
+
+
+def create_event_notifications(
+    db: Session,
+    evento: EventoAmbiental,
+    playa_nombre: str,
+) -> None:
+    """Create an environmental event notification for every active user."""
+    usuario_ids = [
+        usuario_id
+        for usuario_id, in db.query(Usuario.id).filter(Usuario.activo.is_(True)).all()
+    ]
+    notifications = [
+        Notificacion(
+            usuario_id=usuario_id,
+            evento_id=evento.id,
+            playa_id=evento.playa_id,
+            titulo=EVENTO_NOTIFICATION_TITLE,
+            mensaje=f"Se reportó {evento.tipo.value} en {playa_nombre}",
+        )
+        for usuario_id in usuario_ids
+    ]
+    db.add_all(notifications)

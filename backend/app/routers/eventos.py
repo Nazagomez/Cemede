@@ -15,6 +15,7 @@ from app.services.capacidad_service import (
     get_stored_factors_by_evento,
     resolve_factor_correccion,
 )
+from app.services.notificacion_service import create_event_notifications
 
 router = APIRouter(prefix="/eventos", tags=["Eventos"])
 
@@ -89,6 +90,7 @@ def crear_evento(
             valor=factor,
         )
     )
+    create_event_notifications(db, evento, playa.nombre)
     db.commit()
     db.refresh(evento)
     return build_evento_response(
