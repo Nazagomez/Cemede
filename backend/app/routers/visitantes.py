@@ -5,7 +5,7 @@ from datetime import date, datetime, time
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_default_registrar_user
 from app.database import get_db
 from app.models import Playa, RegistroVisitante, Usuario
 from app.schemas import (
@@ -25,15 +25,15 @@ router = APIRouter(prefix="/visitantes", tags=["Visitantes"])
 def registrar_entrada(
     payload: EntradaVisitanteRequest,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
 ) -> RegistroVisitanteResponse:
     """Register visitor entry."""
     playa = db.query(Playa).filter(Playa.id == payload.playa_id, Playa.activa.is_(True)).first()
     if playa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
+    registrar = get_default_registrar_user(db)
     registro = RegistroVisitante(
         playa_id=payload.playa_id,
-        usuario_id=current_user.id,
+        usuario_id=registrar.id,
         fecha_entrada=datetime.utcnow(),
         cantidad_personas=payload.cantidad_personas,
         observaciones=payload.observaciones,
@@ -59,7 +59,6 @@ def registrar_salida(
     registro_id: int,
     payload: SalidaVisitanteRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
 ) -> RegistroVisitanteResponse:
     """Register visitor exit."""
     registro = db.query(RegistroVisitante).filter(RegistroVisitante.id == registro_id).first()

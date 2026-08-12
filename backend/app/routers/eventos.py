@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_default_registrar_user
 from app.database import get_db
 from app.enums import TipoEvento
 from app.models import EventoAmbiental, FactorCorreccion, Playa, Usuario
@@ -63,16 +63,16 @@ def build_evento_responses(
 def crear_evento(
     payload: EventoAmbientalRequest,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
 ) -> EventoAmbientalResponse:
     """Report an environmental event."""
     playa = db.query(Playa).filter(Playa.id == payload.playa_id).first()
     if playa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
+    registrar = get_default_registrar_user(db)
     factor = calcular_factor_correccion(payload.parte_afectada, payload.totalidad_analizada)
     evento = EventoAmbiental(
         playa_id=payload.playa_id,
-        usuario_id=current_user.id,
+        usuario_id=registrar.id,
         tipo=payload.tipo,
         titulo=payload.titulo,
         descripcion=payload.descripcion,
@@ -107,7 +107,6 @@ def list_eventos(
     tipo: TipoEvento | None = None,
     activo: bool | None = None,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
 ) -> list[EventoAmbientalResponse]:
     """List environmental events with optional filters."""
     query = db.query(EventoAmbiental)
@@ -132,7 +131,6 @@ def list_eventos(
 def list_eventos_activos(
     playa_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
 ) -> list[EventoAmbientalResponse]:
     """List active environmental events for a beach."""
     playa = db.query(Playa).filter(Playa.id == playa_id).first()

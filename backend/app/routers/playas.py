@@ -54,9 +54,21 @@ def build_configuracion_response(
 
 
 @router.get("", response_model=list[PlayaResponse])
-def list_playas(db: Session = Depends(get_db), _: Usuario = Depends(get_current_user)) -> list[Playa]:
-    """List all active beaches."""
-    return db.query(Playa).filter(Playa.activa.is_(True)).all()
+def list_playas(
+    nombre: str | None = None,
+    canton: str | None = None,
+    provincia: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[Playa]:
+    """List active beaches with optional search filters."""
+    query = db.query(Playa).filter(Playa.activa.is_(True))
+    if nombre is not None:
+        query = query.filter(Playa.nombre.like(f"%{nombre}%"))
+    if canton is not None:
+        query = query.filter(Playa.canton.like(f"%{canton}%"))
+    if provincia is not None:
+        query = query.filter(Playa.provincia.like(f"%{provincia}%"))
+    return query.order_by(Playa.nombre).all()
 
 
 @router.post("", response_model=PlayaResponse, status_code=status.HTTP_201_CREATED)
@@ -96,7 +108,6 @@ def create_playa(
 def get_playa(
     playa_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
 ) -> Playa:
     """Get beach by id."""
     return get_active_playa(db, playa_id)
