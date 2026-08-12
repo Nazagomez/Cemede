@@ -75,6 +75,7 @@ class NotificacionServiceTest(TestCase):
         create_event_notifications(cast(Session, fake_db), evento, "Junquillal")
         self.assertEqual([1, 2], [item.usuario_id for item in fake_db.added])
         self.assertTrue(all(item.evento_id == 7 for item in fake_db.added))
+        self.assertTrue(all("aprobó" in item.mensaje for item in fake_db.added))
 
     def test_does_not_create_normal_occupancy_notifications(self) -> None:
         """Skip notifications while occupancy remains normal."""
@@ -109,11 +110,9 @@ class NotificacionServiceTest(TestCase):
         """Release the unique key so a future alert can be created."""
         notification = SimpleNamespace(id=9, leida=False, deduplication_key="occupancy:1:1:critico")
         fake_db = FakeSession([[notification]])
-        current_user = SimpleNamespace(id=1)
         response = mark_notificacion_as_read(
             notificacion_id=notification.id,
             db=cast(Session, fake_db),
-            current_user=current_user,
         )
         self.assertTrue(response.leida)
         self.assertIsNone(notification.deduplication_key)

@@ -49,3 +49,16 @@ def get_default_registrar_user(db: Session) -> Usuario:
             detail="No hay usuario registrador disponible",
         )
     return user
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+    db: Session = Depends(get_db),
+) -> Usuario | None:
+    """Return authenticated user when a valid token is provided."""
+    if credentials is None:
+        return None
+    email = decode_access_token(credentials.credentials)
+    if email is None:
+        return None
+    return db.query(Usuario).filter(Usuario.email == email, Usuario.activo.is_(True)).first()

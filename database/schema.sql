@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS registro_visitante (
 CREATE TABLE IF NOT EXISTS evento_ambiental (
   id INT AUTO_INCREMENT PRIMARY KEY,
   playa_id INT NOT NULL,
-  usuario_id INT NOT NULL,
+  usuario_id INT NULL,
   tipo ENUM(
     'arribada_tortugas',
     'marea_roja',
@@ -78,10 +78,16 @@ CREATE TABLE IF NOT EXISTS evento_ambiental (
   fecha_fin DATETIME NULL,
   parte_afectada DECIMAL(10, 2) NOT NULL,
   totalidad_analizada DECIMAL(10, 2) NOT NULL,
-  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  activo BOOLEAN NOT NULL DEFAULT FALSE,
+  estado ENUM('pendiente', 'aprobado', 'rechazado', 'cerrado') NOT NULL DEFAULT 'pendiente',
+  origen ENUM('visitante', 'investigador', 'administrador') NOT NULL DEFAULT 'visitante',
+  reportado_por VARCHAR(150) NULL,
+  aprobado_por INT NULL,
+  fecha_aprobacion DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_evento_playa FOREIGN KEY (playa_id) REFERENCES playa(id),
-  CONSTRAINT fk_evento_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id)
+  CONSTRAINT fk_evento_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id),
+  CONSTRAINT fk_evento_aprobado_por FOREIGN KEY (aprobado_por) REFERENCES usuario(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS factor_correccion (
@@ -106,6 +112,18 @@ CREATE TABLE IF NOT EXISTS estimacion_capacidad (
   porcentaje_ocupacion DECIMAL(6, 2) NOT NULL DEFAULT 0,
   metodo_ccr ENUM('formula', 'machine_learning', 'hibrido') NOT NULL DEFAULT 'formula',
   CONSTRAINT fk_estimacion_playa FOREIGN KEY (playa_id) REFERENCES playa(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS aviso_publico (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  evento_id INT NULL,
+  playa_id INT NOT NULL,
+  tipo ENUM('evento_pendiente', 'evento_aprobado', 'evento_cerrado') NOT NULL,
+  titulo VARCHAR(200) NOT NULL,
+  mensaje TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_aviso_evento FOREIGN KEY (evento_id) REFERENCES evento_ambiental(id),
+  CONSTRAINT fk_aviso_playa FOREIGN KEY (playa_id) REFERENCES playa(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS notificacion (

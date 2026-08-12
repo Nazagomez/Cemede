@@ -3,10 +3,13 @@
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
+from app.enums import RolUsuario
 from app.models import EventoAmbiental, Notificacion, Playa, Usuario
 from app.schemas import NotificacionResponse
 
-EVENTO_NOTIFICATION_TITLE = "Evento ambiental reportado"
+EVENTO_PENDIENTE_TITLE = "Evento pendiente de aprobación"
+EVENTO_APROBADO_TITLE = "Evento ambiental aprobado"
+EVENTO_CERRADO_TITLE = "Evento ambiental cerrado"
 OCUPACION_ADVERTENCIA_TITLE = "Ocupación en advertencia"
 OCUPACION_CRITICA_TITLE = "Ocupación crítica"
 
@@ -69,6 +72,69 @@ def create_event_notifications(
     playa_nombre: str,
 ) -> None:
     """Create an environmental event notification for every active user."""
+    create_event_approved_notifications(db, evento, playa_nombre, None)
+
+
+def create_pending_event_admin_notifications(
+    db: Session,
+    evento: EventoAmbiental,
+    playa_nombre: str,
+) -> None:
+    """Create a pending approval notification for every active administrator."""
+    admin_ids = [
+        admin_id
+        for admin_id, in db.query(Usuario.id)
+        .filter(Usuario.activo.is_(True), Usuario.rol == RolUsuario.ADMINISTRADOR)
+        .all()
+    ]
+    notifications = [
+        Notificacion(
+            usuario_id=admin_id,
+            evento_id=evento.id,
+            playa_id=evento.playa_id,
+            titulo=EVENTO_PENDIENTE_TITLE,
+            mensaje=f"Hay un evento {evento.tipo.value} en {playa_nombre} pendiente de aprobación",
+        )
+        for admin_id in admin_ids
+    ]
+    db.add_all(notifications)
+
+
+def create_event_approved_notifications(
+    db: Session,
+    evento: EventoAmbiental,
+    playa_nombre: str,
+    factor_correccion: float | None,
+) -> None:
+    """Create an approved event notification for every active user."""
+    usuario_ids = [
+        usuario_id
+        for usuario_id, in db.query(Usuario.id).filter(Usuario.activo.is_(True)).all()
+    ]
+    factor_text = (
+        f" Factor de corrección = {factor_correccion:.4f}."
+        if factor_correccion is not None
+        else ""
+    )
+    notifications = [
+        Notificacion(
+            usuario_id=usuario_id,
+            evento_id=evento.id,
+            playa_id=evento.playa_id,
+            titulo=EVENTO_APROBADO_TITLE,
+            mensaje=f"Se aprobó {evento.tipo.value} en {playa_nombre}.{factor_text}",
+        )
+        for usuario_id in usuario_ids
+    ]
+    db.add_all(notifications)
+
+
+def create_event_closed_notifications(
+    db: Session,
+    evento: EventoAmbiental,
+    playa_nombre: str,
+) -> None:
+    """Create a closed event notification for every active user."""
     usuario_ids = [
         usuario_id
         for usuario_id, in db.query(Usuario.id).filter(Usuario.activo.is_(True)).all()
@@ -78,8 +144,8 @@ def create_event_notifications(
             usuario_id=usuario_id,
             evento_id=evento.id,
             playa_id=evento.playa_id,
-            titulo=EVENTO_NOTIFICATION_TITLE,
-            mensaje=f"Se reportó {evento.tipo.value} en {playa_nombre}",
+            titulo=EVENTO_CERRADO_TITLE,
+            mensaje=f"Se cerró {evento.tipo.value} en {playa_nombre}",
         )
         for usuario_id in usuario_ids
     ]
