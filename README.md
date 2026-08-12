@@ -68,7 +68,9 @@ uvicorn app.main:app --reload --port 8000
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `GET /api/playas`
+- `POST /api/playas`
 - `GET /api/playas/{id}`
+- `DELETE /api/playas/{id}`
 - `GET /api/playas/{id}/configuracion`
 - `PUT /api/playas/{id}/configuracion`
 - `POST /api/visitantes/entrada`

@@ -48,6 +48,23 @@ class PlayaResponse(BaseModel):
     latitud: float | None
     longitud: float | None
     activa: bool
+    mensaje: str | None = None
+
+
+class PlayaCreate(BaseModel):
+    """Beach creation payload with initial CCF configuration."""
+
+    nombre: str = Field(min_length=1, max_length=150)
+    descripcion: str | None = None
+    area_util_m2: float = Field(gt=0)
+    canton: str = Field(min_length=1, max_length=100)
+    provincia: str = Field(default="Guanacaste", min_length=1, max_length=100)
+    latitud: float | None = None
+    longitud: float | None = None
+    area_por_visitante_m2: float = Field(default=20.0, gt=0)
+    periodo_horas: int = Field(default=8, gt=0)
+    tiempo_permanencia_horas: float = Field(default=4.0, gt=0)
+    capacidad_manejo: float = Field(default=0.75, gt=0, le=1)
 
 
 class ConfiguracionCcfResponse(BaseModel):
