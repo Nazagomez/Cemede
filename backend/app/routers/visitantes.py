@@ -17,6 +17,7 @@ from app.schemas import (
     VisitanteHistorialResponse,
 )
 from app.services.capacidad_service import obtener_visitantes_activos
+from app.services.playa_service import get_active_playa_for_update
 
 router = APIRouter(prefix="/visitantes", tags=["Visitantes"])
 
@@ -27,7 +28,7 @@ def registrar_entrada(
     db: Session = Depends(get_db),
 ) -> RegistroVisitanteResponse:
     """Register visitor entry."""
-    playa = db.query(Playa).filter(Playa.id == payload.playa_id, Playa.activa.is_(True)).first()
+    playa = get_active_playa_for_update(db, payload.playa_id)
     if playa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
     registrar = get_default_registrar_user(db)

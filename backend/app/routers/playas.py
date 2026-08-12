@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import ConfiguracionCcf, Playa, Usuario
 from app.schemas import ConfiguracionCcfResponse, ConfiguracionCcfUpdate, PlayaCreate, PlayaResponse
 from app.services.capacidad_service import obtener_visitantes_activos
+from app.services.playa_service import get_playa_for_update
 
 router = APIRouter(prefix="/playas", tags=["Playas"])
 
@@ -155,7 +156,9 @@ def deactivate_playa(
     _: Usuario = Depends(require_admin),
 ) -> PlayaResponse:
     """Soft-delete a beach by marking it inactive (admin only)."""
-    playa = get_playa_by_id(db, playa_id)
+    playa = get_playa_for_update(db, playa_id)
+    if playa is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
     if not playa.activa:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Playa ya está dada de baja")
     if obtener_visitantes_activos(db, playa_id) > 0:
