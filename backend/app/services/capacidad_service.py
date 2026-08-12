@@ -4,7 +4,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.enums import MetodoCcr
+from app.enums import EstadoEvento, MetodoCcr
 from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, FactorCorreccion, Playa, RegistroVisitante
 
 
@@ -65,10 +65,14 @@ def resolve_factor_correccion(evento: EventoAmbiental, stored_factors: dict[int,
 
 
 def obtener_eventos_activos(db: Session, playa_id: int) -> list[EventoAmbiental]:
-    """Return active environmental events for a beach."""
+    """Return approved and active environmental events for a beach."""
     return (
         db.query(EventoAmbiental)
-        .filter(EventoAmbiental.playa_id == playa_id, EventoAmbiental.activo.is_(True))
+        .filter(
+            EventoAmbiental.playa_id == playa_id,
+            EventoAmbiental.estado == EstadoEvento.APROBADO,
+            EventoAmbiental.activo.is_(True),
+        )
         .all()
     )
 

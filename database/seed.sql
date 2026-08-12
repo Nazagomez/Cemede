@@ -58,11 +58,11 @@ INSERT INTO configuracion_ccf (playa_id, area_por_visitante_m2, periodo_horas, t
 -- Evento de ejemplo: marea alta en Junquillal (FC = 1 - 5000/45000 = 0.8889)
 INSERT INTO evento_ambiental (
   playa_id, usuario_id, tipo, titulo, descripcion,
-  fecha_inicio, parte_afectada, totalidad_analizada, activo
+  fecha_inicio, parte_afectada, totalidad_analizada, activo, estado, origen
 ) VALUES (
   1, 2, 'marea_alta', 'Marea alta sector sur',
   'Sector sur parcialmente inundado durante la mañana',
-  NOW(), 5000.00, 45000.00, TRUE
+  NOW(), 5000.00, 45000.00, TRUE, 'aprobado', 'investigador'
 );
 
 INSERT INTO factor_correccion (evento_id, nombre_variable, valor) VALUES

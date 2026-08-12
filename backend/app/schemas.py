@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.enums import MetodoCcr, RolUsuario, TipoEvento
+from app.enums import EstadoEvento, MetodoCcr, OrigenEvento, RolUsuario, TipoAvisoPublico, TipoEvento
 
 
 class LoginRequest(BaseModel):
@@ -160,6 +160,7 @@ class EventoAmbientalRequest(BaseModel):
     fecha_inicio: datetime
     parte_afectada: float = Field(ge=0)
     totalidad_analizada: float = Field(gt=0)
+    reportado_por: str | None = Field(default=None, max_length=150)
 
 
 class EventoAmbientalResponse(BaseModel):
@@ -177,7 +178,25 @@ class EventoAmbientalResponse(BaseModel):
     fecha_fin: datetime | None
     factor_correccion: float | None = None
     activo: bool
+    estado: EstadoEvento
+    origen: OrigenEvento
+    reportado_por: str | None = None
     mensaje: str | None = None
+
+
+class AvisoPublicoResponse(BaseModel):
+    """Public announcement response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    evento_id: int | None
+    playa_id: int
+    playa_nombre: str
+    tipo: TipoAvisoPublico
+    titulo: str
+    mensaje: str
+    created_at: datetime
 
 
 class CapacidadEstimacionResponse(BaseModel):

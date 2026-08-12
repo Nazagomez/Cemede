@@ -6,7 +6,7 @@ from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, St
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.enums import MetodoCcr, RolUsuario, TipoEvento
+from app.enums import EstadoEvento, MetodoCcr, OrigenEvento, RolUsuario, TipoAvisoPublico, TipoEvento
 
 
 def enum_values(enum_class: type) -> list[str]:
@@ -88,7 +88,7 @@ class EventoAmbiental(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     playa_id: Mapped[int] = mapped_column(ForeignKey("playa.id"), nullable=False)
-    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"), nullable=False)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
     tipo: Mapped[TipoEvento] = mapped_column(Enum(TipoEvento, values_callable=enum_values), nullable=False)
     titulo: Mapped[str] = mapped_column(String(200), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text)
@@ -96,7 +96,20 @@ class EventoAmbiental(Base):
     fecha_fin: Mapped[datetime | None] = mapped_column(DateTime)
     parte_afectada: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     totalidad_analizada: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    estado: Mapped[EstadoEvento] = mapped_column(
+        Enum(EstadoEvento, values_callable=enum_values),
+        nullable=False,
+        default=EstadoEvento.PENDIENTE,
+    )
+    origen: Mapped[OrigenEvento] = mapped_column(
+        Enum(OrigenEvento, values_callable=enum_values),
+        nullable=False,
+        default=OrigenEvento.VISITANTE,
+    )
+    reportado_por: Mapped[str | None] = mapped_column(String(150))
+    aprobado_por: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
+    fecha_aprobacion: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     factores: Mapped[list["FactorCorreccion"]] = relationship(back_populates="evento")
 
@@ -134,6 +147,20 @@ class EstimacionCapacidad(Base):
         nullable=False,
         default=MetodoCcr.FORMULA,
     )
+
+
+class AvisoPublico(Base):
+    """Public announcement shown on the main page."""
+
+    __tablename__ = "aviso_publico"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    evento_id: Mapped[int | None] = mapped_column(ForeignKey("evento_ambiental.id"))
+    playa_id: Mapped[int] = mapped_column(ForeignKey("playa.id"), nullable=False)
+    tipo: Mapped[TipoAvisoPublico] = mapped_column(Enum(TipoAvisoPublico, values_callable=enum_values), nullable=False)
+    titulo: Mapped[str] = mapped_column(String(200), nullable=False)
+    mensaje: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class Notificacion(Base):

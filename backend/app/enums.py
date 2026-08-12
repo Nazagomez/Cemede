@@ -22,6 +22,31 @@ class TipoEvento(str, enum.Enum):
     OTRO = "otro"
 
 
+class EstadoEvento(str, enum.Enum):
+    """Environmental event approval lifecycle."""
+
+    PENDIENTE = "pendiente"
+    APROBADO = "aprobado"
+    RECHAZADO = "rechazado"
+    CERRADO = "cerrado"
+
+
+class OrigenEvento(str, enum.Enum):
+    """Who reported the environmental event."""
+
+    VISITANTE = "visitante"
+    INVESTIGADOR = "investigador"
+    ADMINISTRADOR = "administrador"
+
+
+class TipoAvisoPublico(str, enum.Enum):
+    """Public announcement type for the main page."""
+
+    EVENTO_PENDIENTE = "evento_pendiente"
+    EVENTO_APROBADO = "evento_aprobado"
+    EVENTO_CERRADO = "evento_cerrado"
+
+
 class MetodoCcr(str, enum.Enum):
     """CCR calculation method."""
 
