@@ -21,6 +21,7 @@ from app.services.evento_service import (
     notify_evento_aprobado,
     notify_evento_cerrado,
     notify_evento_pendiente,
+    notify_evento_rechazado,
     resolve_evento_origen,
 )
 
@@ -233,6 +234,8 @@ def rechazar_evento(
     playa = db.query(Playa).filter(Playa.id == evento.playa_id).first()
     evento.estado = EstadoEvento.RECHAZADO
     evento.activo = False
+    if playa is not None:
+        notify_evento_rechazado(db, evento)
     db.commit()
     db.refresh(evento)
     return build_evento_response(

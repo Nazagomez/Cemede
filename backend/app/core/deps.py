@@ -60,5 +60,8 @@ def get_optional_current_user(
         return None
     email = decode_access_token(credentials.credentials)
     if email is None:
-        return None
-    return db.query(Usuario).filter(Usuario.email == email, Usuario.activo.is_(True)).first()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+    user = db.query(Usuario).filter(Usuario.email == email, Usuario.activo.is_(True)).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado")
+    return user

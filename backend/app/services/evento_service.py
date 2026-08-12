@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.enums import EstadoEvento, OrigenEvento, RolUsuario, TipoAvisoPublico
 from app.models import EventoAmbiental, Usuario
-from app.services.aviso_service import create_public_aviso
+from app.services.aviso_service import create_public_aviso, remove_public_avisos_for_evento
 from app.services.notificacion_service import (
     create_event_approved_notifications,
     create_event_closed_notifications,
@@ -43,6 +43,11 @@ def notify_evento_pendiente(
     )
 
 
+def notify_evento_rechazado(db: Session, evento: EventoAmbiental) -> None:
+    """Remove stale pending public announcements after an event is rejected."""
+    remove_public_avisos_for_evento(db, evento.id, TipoAvisoPublico.EVENTO_PENDIENTE)
+
+
 def notify_evento_aprobado(
     db: Session,
     evento: EventoAmbiental,
@@ -50,6 +55,7 @@ def notify_evento_aprobado(
     factor_correccion: float,
 ) -> None:
     """Notify all active users and publish a public approved announcement."""
+    remove_public_avisos_for_evento(db, evento.id, TipoAvisoPublico.EVENTO_PENDIENTE)
     create_event_approved_notifications(db, evento, playa_nombre, factor_correccion)
     create_public_aviso(
         db=db,

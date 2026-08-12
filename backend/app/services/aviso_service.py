@@ -44,6 +44,18 @@ def create_public_aviso(
     return aviso
 
 
+def remove_public_avisos_for_evento(
+    db: Session,
+    evento_id: int,
+    tipo: TipoAvisoPublico,
+) -> None:
+    """Remove stale public announcements for an event and announcement type."""
+    db.query(AvisoPublico).filter(
+        AvisoPublico.evento_id == evento_id,
+        AvisoPublico.tipo == tipo,
+    ).delete(synchronize_session=False)
+
+
 def list_public_avisos(
     db: Session,
     playa_id: int | None = None,
