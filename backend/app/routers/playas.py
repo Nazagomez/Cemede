@@ -6,11 +6,28 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, require_admin
 from app.database import get_db
 from app.models import ConfiguracionCcf, Playa, Usuario
-from app.schemas import ConfiguracionCcfResponse, ConfiguracionCcfUpdate, PlayaResponse
+from app.schemas import ConfiguracionCcfResponse, ConfiguracionCcfUpdate, PlayaCreate, PlayaResponse
+from app.services.capacidad_service import obtener_visitantes_activos
+from app.services.playa_service import get_playa_for_update
 
 router = APIRouter(prefix="/playas", tags=["Playas"])
 
 CONFIGURACION_ACTUALIZADA_MENSAJE = "Configuración actualizada correctamente"
+PLAYA_CREADA_MENSAJE = "Playa registrada correctamente"
+PLAYA_BAJA_MENSAJE = "Playa dada de baja correctamente"
+
+
+def get_playa_by_id(db: Session, playa_id: int) -> Playa:
+    """Return a beach by id or raise 404."""
+    playa = db.query(Playa).filter(Playa.id == playa_id).first()
+    if playa is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
+    return playa
+
+
+def build_playa_response(playa: Playa, mensaje: str | None = None) -> PlayaResponse:
+    """Build beach API response."""
+    return PlayaResponse.model_validate(playa).model_copy(update={"mensaje": mensaje})
 
 
 def get_active_playa(db: Session, playa_id: int) -> Playa:
@@ -38,16 +55,60 @@ def build_configuracion_response(
 
 
 @router.get("", response_model=list[PlayaResponse])
-def list_playas(db: Session = Depends(get_db), _: Usuario = Depends(get_current_user)) -> list[Playa]:
-    """List all beaches."""
-    return db.query(Playa).filter(Playa.activa.is_(True)).all()
+def list_playas(
+    nombre: str | None = None,
+    canton: str | None = None,
+    provincia: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[Playa]:
+    """List active beaches with optional search filters."""
+    query = db.query(Playa).filter(Playa.activa.is_(True))
+    if nombre is not None:
+        query = query.filter(Playa.nombre.like(f"%{nombre}%"))
+    if canton is not None:
+        query = query.filter(Playa.canton.like(f"%{canton}%"))
+    if provincia is not None:
+        query = query.filter(Playa.provincia.like(f"%{provincia}%"))
+    return query.order_by(Playa.nombre).all()
+
+
+@router.post("", response_model=PlayaResponse, status_code=status.HTTP_201_CREATED)
+def create_playa(
+    payload: PlayaCreate,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_admin),
+) -> PlayaResponse:
+    """Register a new beach with default CCF configuration (admin only)."""
+    playa = Playa(
+        nombre=payload.nombre,
+        descripcion=payload.descripcion,
+        area_util_m2=payload.area_util_m2,
+        canton=payload.canton,
+        provincia=payload.provincia,
+        latitud=payload.latitud,
+        longitud=payload.longitud,
+        activa=True,
+    )
+    db.add(playa)
+    db.flush()
+    db.add(
+        ConfiguracionCcf(
+            playa_id=playa.id,
+            area_por_visitante_m2=payload.area_por_visitante_m2,
+            periodo_horas=payload.periodo_horas,
+            tiempo_permanencia_horas=payload.tiempo_permanencia_horas,
+            capacidad_manejo=payload.capacidad_manejo,
+        )
+    )
+    db.commit()
+    db.refresh(playa)
+    return build_playa_response(playa, mensaje=PLAYA_CREADA_MENSAJE)
 
 
 @router.get("/{playa_id}", response_model=PlayaResponse)
 def get_playa(
     playa_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
 ) -> Playa:
     """Get beach by id."""
     return get_active_playa(db, playa_id)
@@ -86,3 +147,26 @@ def update_configuracion(
     db.commit()
     db.refresh(config)
     return build_configuracion_response(config, mensaje=CONFIGURACION_ACTUALIZADA_MENSAJE)
+
+
+@router.delete("/{playa_id}", response_model=PlayaResponse)
+def deactivate_playa(
+    playa_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_admin),
+) -> PlayaResponse:
+    """Soft-delete a beach by marking it inactive (admin only)."""
+    playa = get_playa_for_update(db, playa_id)
+    if playa is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
+    if not playa.activa:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Playa ya está dada de baja")
+    if obtener_visitantes_activos(db, playa_id) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede dar de baja una playa con visitantes activos",
+        )
+    playa.activa = False
+    db.commit()
+    db.refresh(playa)
+    return build_playa_response(playa, mensaje=PLAYA_BAJA_MENSAJE)

@@ -33,3 +33,19 @@ def require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
     if current_user.rol != RolUsuario.ADMINISTRADOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso denegado")
     return current_user
+
+
+def get_default_registrar_user(db: Session) -> Usuario:
+    """Return the default investigator used for public write operations."""
+    user = (
+        db.query(Usuario)
+        .filter(Usuario.activo.is_(True), Usuario.rol == RolUsuario.INVESTIGADOR)
+        .order_by(Usuario.id)
+        .first()
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No hay usuario registrador disponible",
+        )
+    return user

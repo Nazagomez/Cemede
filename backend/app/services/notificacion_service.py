@@ -39,13 +39,23 @@ def list_user_notifications(
     leida: bool | None = None,
 ) -> list[NotificacionResponse]:
     """List a user's notifications with an optional read-status filter."""
-    query = (
-        db.query(Notificacion, Playa.nombre)
-        .join(Playa, Playa.id == Notificacion.playa_id)
-        .filter(Notificacion.usuario_id == usuario_id)
-    )
+    return list_notifications(db, leida=leida, usuario_id=usuario_id)
+
+
+def list_notifications(
+    db: Session,
+    leida: bool | None = None,
+    usuario_id: int | None = None,
+    playa_id: int | None = None,
+) -> list[NotificacionResponse]:
+    """List notifications with optional filters."""
+    query = db.query(Notificacion, Playa.nombre).join(Playa, Playa.id == Notificacion.playa_id)
     if leida is not None:
         query = query.filter(Notificacion.leida.is_(leida))
+    if usuario_id is not None:
+        query = query.filter(Notificacion.usuario_id == usuario_id)
+    if playa_id is not None:
+        query = query.filter(Notificacion.playa_id == playa_id)
     rows = query.order_by(Notificacion.created_at.desc()).all()
     return [
         build_notificacion_response(notificacion, playa_nombre)
