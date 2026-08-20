@@ -87,11 +87,19 @@ def crear_evento(
     db: Session = Depends(get_db),
     current_user: Usuario | None = Depends(get_optional_current_user),
 ) -> EventoAmbientalResponse:
-    """Report an environmental event pending administrator approval."""
+    """Report an environmental event.
+
+    Events reported by staff (investigador/administrador) are auto-approved,
+    since they come from a trusted authenticated source. Visitor reports go
+    through the pending-approval workflow.
+    """
     playa = db.query(Playa).filter(Playa.id == payload.playa_id, Playa.activa.is_(True)).first()
     if playa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
+
     origen = resolve_evento_origen(current_user)
+    es_personal = origen != OrigenEvento.VISITANTE
+
     evento = EventoAmbiental(
         playa_id=payload.playa_id,
         usuario_id=current_user.id if current_user is not None else None,
@@ -101,21 +109,43 @@ def crear_evento(
         fecha_inicio=payload.fecha_inicio,
         parte_afectada=payload.parte_afectada,
         totalidad_analizada=payload.totalidad_analizada,
-        activo=False,
-        estado=EstadoEvento.PENDIENTE,
+        activo=es_personal,
+        estado=EstadoEvento.APROBADO if es_personal else EstadoEvento.PENDIENTE,
         origen=origen,
         reportado_por=payload.reportado_por,
     )
+
+    if es_personal:
+        evento.aprobado_por = current_user.id
+        evento.fecha_aprobacion = datetime.utcnow()
+
     db.add(evento)
     db.flush()
-    notify_evento_pendiente(db, evento, playa.nombre)
+
+    if es_personal:
+        factor = calcular_factor_correccion(float(evento.parte_afectada), float(evento.totalidad_analizada))
+        db.add(
+            FactorCorreccion(
+                evento_id=evento.id,
+                nombre_variable=evento.tipo.value,
+                valor=factor,
+            )
+        )
+        notify_evento_aprobado(db, evento, playa.nombre, factor)
+        mensaje = f"Evento registrado y aprobado automáticamente. Factor de corrección = {factor}"
+        factor_correccion_respuesta = factor
+    else:
+        notify_evento_pendiente(db, evento, playa.nombre)
+        mensaje = "Evento registrado y enviado para aprobación del administrador"
+        factor_correccion_respuesta = None
+
     db.commit()
     db.refresh(evento)
     return build_evento_response(
         evento=evento,
         playa_nombre=playa.nombre,
-        factor_correccion=None,
-        mensaje="Evento registrado y enviado para aprobación del administrador",
+        factor_correccion=factor_correccion_respuesta,
+        mensaje=mensaje,
     )
 
 
