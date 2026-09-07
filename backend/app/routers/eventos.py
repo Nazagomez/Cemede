@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, get_optional_current_user, require_admin
+from app.core.deps import get_current_user, get_optional_current_user
 from app.database import get_db
 from app.enums import EstadoEvento, OrigenEvento, TipoEvento
 from app.models import EventoAmbiental, FactorCorreccion, Playa, Usuario
@@ -122,9 +122,9 @@ def crear_evento(
 @router.get("/pendientes", response_model=list[EventoAmbientalResponse])
 def list_eventos_pendientes(
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    _: Usuario = Depends(get_current_user),
 ) -> list[EventoAmbientalResponse]:
-    """List environmental events waiting for administrator approval."""
+    """List environmental events waiting for approval (admin or asistente)."""
     eventos = (
         db.query(EventoAmbiental)
         .filter(EventoAmbiental.estado == EstadoEvento.PENDIENTE)
@@ -191,9 +191,9 @@ def list_eventos_activos(
 def aprobar_evento(
     evento_id: int,
     db: Session = Depends(get_db),
-    admin_user: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(get_current_user),
 ) -> EventoAmbientalResponse:
-    """Approve a pending environmental event and activate its correction factor."""
+    """Approve a pending environmental event and activate its correction factor (admin or asistente)."""
     evento = _get_evento_or_404(db, evento_id)
     ensure_evento_is_pending(evento)
     playa = db.query(Playa).filter(Playa.id == evento.playa_id).first()
@@ -202,7 +202,7 @@ def aprobar_evento(
     factor = calcular_factor_correccion(float(evento.parte_afectada), float(evento.totalidad_analizada))
     evento.estado = EstadoEvento.APROBADO
     evento.activo = True
-    evento.aprobado_por = admin_user.id
+    evento.aprobado_por = current_user.id
     evento.fecha_aprobacion = datetime.utcnow()
     db.add(
         FactorCorreccion(
@@ -226,9 +226,9 @@ def aprobar_evento(
 def rechazar_evento(
     evento_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    _: Usuario = Depends(get_current_user),
 ) -> EventoAmbientalResponse:
-    """Reject a pending environmental event."""
+    """Reject a pending environmental event (admin or asistente)."""
     evento = _get_evento_or_404(db, evento_id)
     ensure_evento_is_pending(evento)
     playa = db.query(Playa).filter(Playa.id == evento.playa_id).first()

@@ -95,6 +95,7 @@ class EntradaVisitanteRequest(BaseModel):
 
     playa_id: int
     cantidad_personas: int = Field(default=1, ge=1)
+    duracion_estimada_horas: float | None = Field(default=None, gt=0)
     observaciones: str | None = None
 
 
@@ -110,6 +111,7 @@ class RegistroVisitanteResponse(BaseModel):
     fecha_entrada: datetime
     fecha_salida: datetime | None
     cantidad_personas: int
+    duracion_estimada_horas: float | None = None
     observaciones: str | None = None
     mensaje: str | None = None
 
@@ -139,6 +141,7 @@ class RegistroVisitanteHistorialItem(BaseModel):
     fecha_entrada: datetime
     fecha_salida: datetime | None
     cantidad_personas: int
+    duracion_estimada_horas: float | None = None
 
 
 class VisitanteHistorialResponse(BaseModel):
