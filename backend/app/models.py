@@ -77,6 +77,7 @@ class RegistroVisitante(Base):
     fecha_entrada: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     fecha_salida: Mapped[datetime | None] = mapped_column(DateTime)
     cantidad_personas: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    duracion_estimada_horas: Mapped[float | None] = mapped_column(Numeric(5, 2))
     observaciones: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 

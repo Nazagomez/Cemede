@@ -18,6 +18,7 @@ from app.schemas import (
 )
 from app.services.capacidad_service import obtener_visitantes_activos
 from app.services.playa_service import get_active_playa_for_update
+from app.services.visitante_service import cerrar_visitas_vencidas
 
 router = APIRouter(prefix="/visitantes", tags=["Visitantes"])
 
@@ -37,6 +38,7 @@ def registrar_entrada(
         usuario_id=registrar.id,
         fecha_entrada=datetime.utcnow(),
         cantidad_personas=payload.cantidad_personas,
+        duracion_estimada_horas=payload.duracion_estimada_horas,
         observaciones=payload.observaciones,
     )
     db.add(registro)
@@ -50,6 +52,7 @@ def registrar_entrada(
         fecha_entrada=registro.fecha_entrada,
         fecha_salida=registro.fecha_salida,
         cantidad_personas=registro.cantidad_personas,
+        duracion_estimada_horas=registro.duracion_estimada_horas,
         observaciones=registro.observaciones,
         mensaje="Entrada registrada correctamente",
     )
@@ -79,6 +82,7 @@ def registrar_salida(
         fecha_entrada=registro.fecha_entrada,
         fecha_salida=registro.fecha_salida,
         cantidad_personas=registro.cantidad_personas,
+        duracion_estimada_horas=registro.duracion_estimada_horas,
         observaciones=registro.observaciones,
         mensaje="Salida registrada correctamente",
     )
@@ -119,6 +123,7 @@ def get_historial_visitantes(
     _: Usuario = Depends(get_current_user),
 ) -> VisitanteHistorialResponse:
     """Get visitor registration history with optional filters."""
+    cerrar_visitas_vencidas(db)
     query = db.query(RegistroVisitante)
     if playa_id is not None:
         query = query.filter(RegistroVisitante.playa_id == playa_id)
@@ -152,6 +157,7 @@ def get_historial_visitantes(
                 fecha_entrada=registro.fecha_entrada,
                 fecha_salida=registro.fecha_salida,
                 cantidad_personas=registro.cantidad_personas,
+                duracion_estimada_horas=registro.duracion_estimada_horas,
             )
             for registro in registros
         ],

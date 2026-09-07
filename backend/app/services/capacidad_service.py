@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.enums import EstadoEvento, MetodoCcr
 from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, FactorCorreccion, Playa, RegistroVisitante
+from app.services.visitante_service import cerrar_visitas_vencidas
 
 
 def calcular_factor_correccion(magnitud_limitante: float, magnitud_total: float) -> float:
@@ -40,6 +41,7 @@ def calcular_cce(ccr: float, capacidad_manejo: float) -> float:
 
 def obtener_visitantes_activos(db: Session, playa_id: int) -> int:
     """Count active visitors for a beach."""
+    cerrar_visitas_vencidas(db)
     registros = (
         db.query(RegistroVisitante)
         .filter(RegistroVisitante.playa_id == playa_id, RegistroVisitante.fecha_salida.is_(None))
