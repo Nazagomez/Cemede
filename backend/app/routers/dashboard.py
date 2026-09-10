@@ -1,8 +1,8 @@
 """Dashboard routes."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -13,6 +13,52 @@ from app.schemas import DashboardPlayaResponse, PlayaResponse
 from app.services.capacidad_service import build_eventos_activos_resumen, construir_estimacion
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+
+
+@router.get("/tendencia")
+def get_dashboard_tendencia(
+    dias: int = Query(default=7, ge=1, le=90),
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> dict[str, object]:
+    """Get occupancy trend across active beaches for the last N days.
+
+    One point per calendar day per beach: the last estimation recorded
+    that day (estimations are ordered ascending, so later rows overwrite
+    earlier ones for the same date).
+    """
+    desde = datetime.utcnow() - timedelta(days=dias)
+    playas = db.query(Playa).filter(Playa.activa.is_(True)).all()
+    playa_nombres = {playa.id: playa.nombre for playa in playas}
+
+    if not playa_nombres:
+        return {"dias": dias, "playas": [], "datos": []}
+
+    estimaciones = (
+        db.query(EstimacionCapacidad)
+        .filter(
+            EstimacionCapacidad.playa_id.in_(playa_nombres.keys()),
+            EstimacionCapacidad.fecha_calculo >= desde,
+        )
+        .order_by(EstimacionCapacidad.fecha_calculo.asc())
+        .all()
+    )
+
+    datos_por_fecha: dict[str, dict[str, float | str]] = {}
+    for estimacion in estimaciones:
+        clave = estimacion.fecha_calculo.date().isoformat()
+        fila = datos_por_fecha.setdefault(clave, {"fecha": clave})
+        nombre = playa_nombres.get(estimacion.playa_id)
+        if nombre is not None:
+            fila[nombre] = float(estimacion.porcentaje_ocupacion)
+
+    datos = [datos_por_fecha[clave] for clave in sorted(datos_por_fecha.keys())]
+
+    return {
+        "dias": dias,
+        "playas": list(playa_nombres.values()),
+        "datos": datos,
+    }
 
 
 @router.get("/{playa_id}", response_model=DashboardPlayaResponse)
