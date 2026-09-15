@@ -29,6 +29,7 @@ class Usuario(Base):
         default=RolUsuario.INVESTIGADOR,
     )
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    debe_cambiar_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -178,3 +179,23 @@ class Notificacion(Base):
     leida: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     deduplication_key: Mapped[str | None] = mapped_column(String(255), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class Permiso(Base):
+    """A single grantable capability in the system."""
+
+    __tablename__ = "permiso"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    clave: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    nombre: Mapped[str] = mapped_column(String(150), nullable=False)
+    descripcion: Mapped[str | None] = mapped_column(String(255))
+
+
+class RolPermiso(Base):
+    """Permission granted to a fixed role."""
+
+    __tablename__ = "rol_permiso"
+
+    rol: Mapped[RolUsuario] = mapped_column(Enum(RolUsuario, values_callable=enum_values), primary_key=True)
+    permiso_id: Mapped[int] = mapped_column(ForeignKey("permiso.id", ondelete="CASCADE"), primary_key=True)

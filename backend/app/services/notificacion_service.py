@@ -3,7 +3,6 @@
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
-from app.enums import RolUsuario
 from app.models import EventoAmbiental, Notificacion, Playa, Usuario
 from app.schemas import NotificacionResponse
 
@@ -80,22 +79,20 @@ def create_pending_event_admin_notifications(
     evento: EventoAmbiental,
     playa_nombre: str,
 ) -> None:
-    """Create a pending approval notification for every active administrator."""
-    admin_ids = [
-        admin_id
-        for admin_id, in db.query(Usuario.id)
-        .filter(Usuario.activo.is_(True), Usuario.rol == RolUsuario.ADMINISTRADOR)
-        .all()
+    """Create a pending approval notification for every active user (anyone can approve)."""
+    usuario_ids = [
+        usuario_id
+        for usuario_id, in db.query(Usuario.id).filter(Usuario.activo.is_(True)).all()
     ]
     notifications = [
         Notificacion(
-            usuario_id=admin_id,
+            usuario_id=usuario_id,
             evento_id=evento.id,
             playa_id=evento.playa_id,
             titulo=EVENTO_PENDIENTE_TITLE,
             mensaje=f"Hay un evento {evento.tipo.value} en {playa_nombre} pendiente de aprobación",
         )
-        for admin_id in admin_ids
+        for usuario_id in usuario_ids
     ]
     db.add_all(notifications)
 

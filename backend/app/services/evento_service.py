@@ -3,7 +3,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.enums import EstadoEvento, OrigenEvento, RolUsuario, TipoAvisoPublico
+from app.enums import EstadoEvento, OrigenEvento, TipoAvisoPublico
 from app.models import EventoAmbiental, Usuario
 from app.services.aviso_service import create_public_aviso, remove_public_avisos_for_evento
 from app.services.notificacion_service import (
@@ -21,9 +21,7 @@ def resolve_evento_origen(current_user: Usuario | None) -> OrigenEvento:
     """Map authenticated user role to event origin."""
     if current_user is None:
         return OrigenEvento.VISITANTE
-    if current_user.rol == RolUsuario.ADMINISTRADOR:
-        return OrigenEvento.ADMINISTRADOR
-    return OrigenEvento.INVESTIGADOR
+    return OrigenEvento(current_user.rol.value)
 
 
 def notify_evento_pendiente(
@@ -31,7 +29,7 @@ def notify_evento_pendiente(
     evento: EventoAmbiental,
     playa_nombre: str,
 ) -> None:
-    """Notify administrators and publish a public pending announcement."""
+    """Notify all active users and publish a public pending announcement."""
     create_pending_event_admin_notifications(db, evento, playa_nombre)
     create_public_aviso(
         db=db,

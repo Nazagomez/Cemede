@@ -6,7 +6,8 @@ from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, require_admin
+from app.core.deps import get_current_user
+from app.core.permissions import require_permission
 from app.database import get_db
 from app.enums import MetodoCcr
 from app.models import ConfiguracionCcf, EstimacionCapacidad, Playa, Usuario
@@ -58,7 +59,7 @@ def get_estimacion(
     db: Session = Depends(get_db),
     _: Usuario = Depends(get_current_user),
 ) -> CapacidadEstimacionResponse:
-    """Get CCF, CCR and CCE estimation for a beach without persisting (admin/investigador)."""
+    """Get CCF, CCR and CCE estimation for a beach without persisting."""
     playa, config = _get_playa_and_config(db, playa_id)
     data = construir_estimacion(db, playa, config, guardar=False)
     return _build_estimacion_response(playa, data)
@@ -81,9 +82,9 @@ def get_estimacion_publica(
 def calcular_estimacion(
     playa_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    _: Usuario = Depends(require_permission("capacidad.gestionar")),
 ) -> CapacidadCalcularResponse:
-    """Recalculate capacity and persist the result in historial (admin only)."""
+    """Recalculate capacity and persist the result in historial."""
     playa, config = _get_playa_and_config(db, playa_id)
     data = construir_estimacion(db, playa, config, guardar=True)
     estimacion_id = data.get("estimacion_id")

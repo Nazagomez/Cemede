@@ -28,13 +28,6 @@ def get_current_user(
     return user
 
 
-def require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    """Require administrator role."""
-    if current_user.rol != RolUsuario.ADMINISTRADOR:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso denegado")
-    return current_user
-
-
 def get_default_registrar_user(db: Session) -> Usuario:
     """Return the default investigator used for public write operations."""
     user = (

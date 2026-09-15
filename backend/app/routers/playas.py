@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, require_admin
+from app.core.deps import get_current_user
+from app.core.permissions import require_permission
 from app.database import get_db
 from app.models import ConfiguracionCcf, Playa, Usuario
 from app.schemas import ConfiguracionCcfResponse, ConfiguracionCcfUpdate, PlayaCreate, PlayaResponse
@@ -76,9 +77,9 @@ def list_playas(
 def create_playa(
     payload: PlayaCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    _: Usuario = Depends(require_permission("playas.gestionar")),
 ) -> PlayaResponse:
-    """Register a new beach with default CCF configuration (admin only)."""
+    """Register a new beach with default CCF configuration."""
     playa = Playa(
         nombre=payload.nombre,
         descripcion=payload.descripcion,
@@ -133,9 +134,9 @@ def update_configuracion(
     playa_id: int,
     payload: ConfiguracionCcfUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    _: Usuario = Depends(require_permission("playas.gestionar")),
 ) -> ConfiguracionCcfResponse:
-    """Update CCF configuration (admin only)."""
+    """Update CCF configuration."""
     get_active_playa(db, playa_id)
     config = db.query(ConfiguracionCcf).filter(ConfiguracionCcf.playa_id == playa_id).first()
     if config is None:
@@ -153,9 +154,9 @@ def update_configuracion(
 def deactivate_playa(
     playa_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    _: Usuario = Depends(require_permission("playas.gestionar")),
 ) -> PlayaResponse:
-    """Soft-delete a beach by marking it inactive (admin only)."""
+    """Soft-delete a beach by marking it inactive."""
     playa = get_playa_for_update(db, playa_id)
     if playa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playa no encontrada")
