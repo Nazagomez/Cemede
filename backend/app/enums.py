@@ -8,6 +8,7 @@ class RolUsuario(str, enum.Enum):
 
     INVESTIGADOR = "investigador"
     ADMINISTRADOR = "administrador"
+    ASISTENTE = "asistente"
 
 
 class TipoEvento(str, enum.Enum):
@@ -37,6 +38,7 @@ class OrigenEvento(str, enum.Enum):
     VISITANTE = "visitante"
     INVESTIGADOR = "investigador"
     ADMINISTRADOR = "administrador"
+    ASISTENTE = "asistente"
 
 
 class TipoAvisoPublico(str, enum.Enum):

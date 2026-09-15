@@ -1,5 +1,7 @@
 """Security utilities: password hashing and JWT."""
 
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -17,6 +19,12 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+
+def generar_password_temporal(longitud: int = 12) -> str:
+    """Generate a random secure temporary password."""
+    alfabeto = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alfabeto) for _ in range(longitud))
 
 
 def create_access_token(subject: str, expires_minutes: int | None = None) -> str:
