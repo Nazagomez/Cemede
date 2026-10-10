@@ -246,6 +246,41 @@ def rechazar_evento(
     )
 
 
+@router.get("/{evento_id}/factores")
+def get_evento_factores(
+    evento_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> dict[str, object]:
+    """Return correction factors linked to an environmental event."""
+    evento = _get_evento_or_404(db, evento_id)
+    factores = db.query(FactorCorreccion).filter(FactorCorreccion.evento_id == evento.id).all()
+    if not factores:
+        stored = get_stored_factors_by_evento(db, [evento.id])
+        valor = resolve_factor_correccion(evento, stored)
+        return {
+            "evento_id": evento.id,
+            "factores": [
+                {
+                    "id": None,
+                    "nombre_variable": evento.tipo.value,
+                    "valor": valor,
+                }
+            ],
+        }
+    return {
+        "evento_id": evento.id,
+        "factores": [
+            {
+                "id": factor.id,
+                "nombre_variable": factor.nombre_variable,
+                "valor": float(factor.valor),
+            }
+            for factor in factores
+        ],
+    }
+
+
 @router.put("/{evento_id}/cerrar", response_model=EventoAmbientalResponse)
 def cerrar_evento(
     evento_id: int,

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.enums import EstadoEvento, MetodoCcr
 from app.models import ConfiguracionCcf, EstimacionCapacidad, EventoAmbiental, FactorCorreccion, Playa, RegistroVisitante
+from app.services import ml_service
 from app.services.visitante_service import cerrar_visitas_vencidas
 
 
@@ -137,10 +138,19 @@ def construir_estimacion(
     )
     factores = obtener_factores_activos(db, playa.id)
     ccr_formula = calcular_ccr(ccf, factores if factores else [1.0])
-    cce = calcular_cce(ccr_formula, float(config.capacidad_manejo))
     visitantes = obtener_visitantes_activos(db, playa.id)
-    porcentaje = calcular_porcentaje_ocupacion(visitantes, ccr_formula)
     eventos_activos = len(factores)
+    porcentaje_entrada_ml = calcular_porcentaje_ocupacion(visitantes, ccr_formula)
+    ccr_final, ccr_ml, metodo_ccr = ml_service.resolve_ccr_final(
+        db=db,
+        playa_id=playa.id,
+        ccr_formula=ccr_formula,
+        visitantes_actuales=visitantes,
+        porcentaje_ocupacion=porcentaje_entrada_ml,
+        eventos_activos=eventos_activos,
+    )
+    cce = calcular_cce(ccr_final, float(config.capacidad_manejo))
+    porcentaje = calcular_porcentaje_ocupacion(visitantes, ccr_final)
     estimacion_id: int | None = None
     if guardar:
         estimacion = EstimacionCapacidad(
@@ -148,12 +158,13 @@ def construir_estimacion(
             fecha_calculo=fecha_calculo,
             ccf=ccf,
             ccr_formula=ccr_formula,
-            ccr_ml=None,
-            ccr_final=ccr_formula,
+            ccr_ml=ccr_ml,
+            ccr_final=ccr_final,
             cce=cce,
             visitantes_actuales=visitantes,
             porcentaje_ocupacion=porcentaje,
-            metodo_ccr=MetodoCcr.FORMULA,
+            eventos_activos=eventos_activos,
+            metodo_ccr=metodo_ccr,
         )
         db.add(estimacion)
         db.flush()
@@ -163,10 +174,10 @@ def construir_estimacion(
         "fecha_calculo": fecha_calculo,
         "ccf": ccf,
         "ccr_formula": ccr_formula,
-        "ccr_ml": None,
-        "ccr_final": ccr_formula,
+        "ccr_ml": ccr_ml,
+        "ccr_final": ccr_final,
         "cce": cce,
-        "metodo_ccr": MetodoCcr.FORMULA.value,
+        "metodo_ccr": metodo_ccr.value,
         "visitantes_actuales": visitantes,
         "porcentaje_ocupacion": porcentaje,
         "eventos_activos": eventos_activos,

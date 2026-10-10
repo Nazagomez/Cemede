@@ -17,3 +17,4 @@ dist/
 
 # ML artifacts
 *.pkl
+backend/ml_artifacts/

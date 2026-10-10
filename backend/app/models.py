@@ -144,11 +144,46 @@ class EstimacionCapacidad(Base):
     cce: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     visitantes_actuales: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     porcentaje_ocupacion: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False, default=0)
+    eventos_activos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     metodo_ccr: Mapped[MetodoCcr] = mapped_column(
         Enum(MetodoCcr, values_callable=enum_values),
         nullable=False,
         default=MetodoCcr.FORMULA,
     )
+
+
+class VisitacionHistorica(Base):
+    """Verified annual visitation records imported from external sources (2000-2024)."""
+
+    __tablename__ = "visitacion_historica"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    playa_id: Mapped[int] = mapped_column(ForeignKey("playa.id"), nullable=False)
+    anio: Mapped[int] = mapped_column(Integer, nullable=False)
+    tipo_visitante: Mapped[str] = mapped_column(String(80), nullable=False)
+    cantidad_visitas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    calidad_dato: Mapped[str | None] = mapped_column(String(120))
+    fuente: Mapped[str | None] = mapped_column(Text)
+    url_fuente: Mapped[str | None] = mapped_column(Text)
+    observacion: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class MlModelo(Base):
+    """Trained ML model metadata per beach."""
+
+    __tablename__ = "ml_modelo"
+
+    playa_id: Mapped[int] = mapped_column(ForeignKey("playa.id"), primary_key=True)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    registros_usados: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    mae: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    rmse: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    max_depth: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
+    min_samples_split: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    min_samples_leaf: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    random_state: Mapped[int] = mapped_column(Integer, nullable=False, default=42)
+    ultimo_entrenamiento: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class AvisoPublico(Base):

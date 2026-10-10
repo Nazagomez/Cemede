@@ -11,6 +11,16 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 480
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     api_prefix: str = "/api"
+    visitacion_excel_path: str = (
+        "/Users/admin/Documents/Universidad/Licenciatura/tesis/registros_visitacion-2000_2024.xlsx"
+    )
+    ml_artifacts_dir: str = "ml_artifacts"
+    ml_registros_minimos: int = 30
+    ml_max_depth: int = 4
+    ml_min_samples_split: int = 5
+    ml_min_samples_leaf: int = 2
+    ml_random_state: int = 42
+    ml_test_size: float = 0.2
 
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587

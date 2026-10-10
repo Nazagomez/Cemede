@@ -6,13 +6,19 @@ from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_optional_current_user
 from app.core.permissions import require_permission
 from app.database import get_db
 from app.enums import MetodoCcr
 from app.models import ConfiguracionCcf, EstimacionCapacidad, Playa, Usuario
 from app.schemas import CapacidadCalcularResponse, CapacidadEstimacionResponse
-from app.services.capacidad_service import construir_estimacion
+from app.services.capacidad_service import (
+    calcular_ccf,
+    calcular_cce,
+    calcular_ccr,
+    construir_estimacion,
+    obtener_factores_activos,
+)
 from app.services.notificacion_service import create_occupancy_notifications
 
 router = APIRouter(prefix="/capacidad", tags=["Capacidad"])
@@ -42,10 +48,10 @@ def _build_estimacion_response(playa: Playa, data: dict[str, object]) -> Capacid
         fecha_calculo=cast(datetime, data["fecha_calculo"]),
         ccf=float(cast(float, data["ccf"])),
         ccr_formula=float(cast(float, data["ccr_formula"])),
-        ccr_ml=None,
+        ccr_ml=float(cast(float, data["ccr_ml"])) if data.get("ccr_ml") is not None else None,
         ccr_final=float(cast(float, data["ccr_final"])),
         cce=float(cast(float, data["cce"])),
-        metodo_ccr=MetodoCcr.FORMULA,
+        metodo_ccr=MetodoCcr(str(data["metodo_ccr"])),
         visitantes_actuales=int(cast(int, data["visitantes_actuales"])),
         porcentaje_ocupacion=float(cast(float, data["porcentaje_ocupacion"])),
         eventos_activos=int(cast(int, data["eventos_activos"])),
@@ -57,7 +63,7 @@ def _build_estimacion_response(playa: Playa, data: dict[str, object]) -> Capacid
 def get_estimacion(
     playa_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
+    _: Usuario | None = Depends(get_optional_current_user),
 ) -> CapacidadEstimacionResponse:
     """Get CCF, CCR and CCE estimation for a beach without persisting."""
     playa, config = _get_playa_and_config(db, playa_id)
@@ -105,6 +111,75 @@ def calcular_estimacion(
         ccr_final=float(cast(float, data["ccr_final"])),
         cce=float(cast(float, data["cce"])),
     )
+
+
+@router.get("/ccf/{playa_id}")
+def get_ccf(
+    playa_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> dict[str, object]:
+    """Calculate physical carrying capacity (CCF)."""
+    playa, config = _get_playa_and_config(db, playa_id)
+    ccf = calcular_ccf(
+        float(playa.area_util_m2),
+        float(config.area_por_visitante_m2),
+        float(config.periodo_horas),
+        float(config.tiempo_permanencia_horas),
+    )
+    return {
+        "playa_id": playa.id,
+        "playa_nombre": playa.nombre,
+        "ccf": ccf,
+        "fecha_calculo": datetime.utcnow(),
+    }
+
+
+@router.get("/ccr/{playa_id}")
+def get_ccr(
+    playa_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> dict[str, object]:
+    """Calculate real carrying capacity (CCR)."""
+    playa, config = _get_playa_and_config(db, playa_id)
+    ccf = calcular_ccf(
+        float(playa.area_util_m2),
+        float(config.area_por_visitante_m2),
+        float(config.periodo_horas),
+        float(config.tiempo_permanencia_horas),
+    )
+    factores = obtener_factores_activos(db, playa_id)
+    ccr_formula = calcular_ccr(ccf, factores if factores else [1.0])
+    data = construir_estimacion(db, playa, config, guardar=False)
+    return {
+        "playa_id": playa.id,
+        "ccf": ccf,
+        "factores_correccion": factores if factores else [1.0],
+        "ccr_formula": ccr_formula,
+        "ccr_ml": data.get("ccr_ml"),
+        "ccr_final": data["ccr_final"],
+        "metodo_ccr": data["metodo_ccr"],
+        "fecha_calculo": datetime.utcnow(),
+    }
+
+
+@router.get("/cce/{playa_id}")
+def get_cce(
+    playa_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> dict[str, object]:
+    """Calculate effective carrying capacity (CCE)."""
+    playa, config = _get_playa_and_config(db, playa_id)
+    data = construir_estimacion(db, playa, config, guardar=False)
+    return {
+        "playa_id": playa.id,
+        "ccr": data["ccr_final"],
+        "capacidad_manejo": float(config.capacidad_manejo),
+        "cce": data["cce"],
+        "fecha_calculo": datetime.utcnow(),
+    }
 
 
 @router.get("/historial/{playa_id}")

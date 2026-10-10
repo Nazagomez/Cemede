@@ -960,8 +960,8 @@ Entrena el modelo DecisionTreeRegressor con los datos históricos disponibles.
   "modelo_activo": true,
   "registros_usados": 80,
   "metricas": {
-    "r2": 0.85,
-    "mae": 120.50
+    "mae": 120.50,
+    "rmse": 145.20
   },
   "mensaje": "Modelo entrenado correctamente"
 }

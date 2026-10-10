@@ -40,7 +40,29 @@ Si la base ya existía antes del módulo de notificaciones, aplica las migracion
 ```bash
 mysql -u root -p < database/migration-add-notification-deduplication-key.sql
 mysql -u root -p < database/migration-add-event-approval-workflow.sql
+mysql -u root -p < database/migration-add-visita-duracion-estimada.sql
+mysql -u root -p < database/migration-add-roles-permisos.sql
+mysql -u root -p < database/migration-add-debe-cambiar-password.sql
+mysql -u root -p < database/migration-add-visitacion-historica.sql
+mysql -u root -p < database/migration-add-ml-modelo.sql
 ```
+
+### Histórico de visitación (Excel) y estimaciones para ML
+
+1. Configura `VISITACION_EXCEL_PATH` en `backend/.env` (ruta al xlsx 2000–2024).
+2. Importa y genera filas en `estimacion_capacidad`:
+
+```bash
+cd backend
+source .venv/bin/activate
+python scripts/import_historico.py
+```
+
+O vía API (admin con permiso `ml.gestionar` / `capacidad.gestionar`):
+
+- `POST /api/historico/importar-excel`
+- `POST /api/historico/sincronizar-estimaciones`
+- `POST /api/ml/entrenar/{playa_id}`
 
 **Usuarios de prueba** (password: `cemede2026`):
 
@@ -93,3 +115,12 @@ uvicorn app.main:app --reload --port 8000
 - `GET /api/dashboard`
 - `GET /api/notificaciones`
 - `PUT /api/notificaciones/{id}/leida`
+- `GET /api/capacidad/ccf/{playa_id}`
+- `GET /api/capacidad/ccr/{playa_id}`
+- `GET /api/capacidad/cce/{playa_id}`
+- `POST /api/historico/importar-excel`
+- `POST /api/historico/sincronizar-estimaciones`
+- `GET /api/historico/visitacion`
+- `GET /api/ml/estado/{playa_id}`
+- `POST /api/ml/entrenar/{playa_id}`
+- `GET /api/ml/prediccion/{playa_id}`

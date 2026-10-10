@@ -319,3 +319,78 @@ class MessageResponse(BaseModel):
     """Generic message response."""
 
     mensaje: str
+
+
+class VisitacionHistoricaResponse(BaseModel):
+    """Imported historical visitation row."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    playa_id: int
+    anio: int
+    tipo_visitante: str
+    cantidad_visitas: int
+    calidad_dato: str | None = None
+    fuente: str | None = None
+    url_fuente: str | None = None
+    observacion: str | None = None
+
+
+class HistoricoImportResponse(BaseModel):
+    """Excel import summary."""
+
+    inserted: int
+    updated_or_skipped: int
+    mensaje: str
+
+
+class HistoricoSyncResponse(BaseModel):
+    """Historical estimation sync summary."""
+
+    configs_actualizadas: int
+    estimaciones_creadas: int
+    estimaciones_actualizadas: int
+    filas_fuente: int
+    mensaje: str
+
+
+class MlMetricasResponse(BaseModel):
+    """ML evaluation metrics."""
+
+    mae: float
+    rmse: float
+
+
+class MlEstadoResponse(BaseModel):
+    """ML model status."""
+
+    playa_id: int
+    modelo_activo: bool
+    registros_disponibles: int
+    registros_minimos: int
+    ultimo_entrenamiento: datetime | None
+    mae: float | None = None
+    rmse: float | None = None
+    mensaje: str
+
+
+class MlEntrenarResponse(BaseModel):
+    """ML training result."""
+
+    playa_id: int
+    modelo_activo: bool
+    registros_usados: int
+    metricas: MlMetricasResponse
+    mensaje: str
+
+
+class MlPrediccionResponse(BaseModel):
+    """ML prediction response."""
+
+    playa_id: int
+    ccr_ml: float | None
+    ccr_formula: float
+    variables_usadas: dict[str, float | int]
+    modelo_activo: bool
+    fecha_prediccion: datetime

@@ -110,8 +110,38 @@ CREATE TABLE IF NOT EXISTS estimacion_capacidad (
   cce DECIMAL(10, 2) NOT NULL,
   visitantes_actuales INT NOT NULL DEFAULT 0,
   porcentaje_ocupacion DECIMAL(6, 2) NOT NULL DEFAULT 0,
+  eventos_activos INT NOT NULL DEFAULT 0,
   metodo_ccr ENUM('formula', 'machine_learning', 'hibrido') NOT NULL DEFAULT 'formula',
   CONSTRAINT fk_estimacion_playa FOREIGN KEY (playa_id) REFERENCES playa(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS visitacion_historica (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  playa_id INT NOT NULL,
+  anio INT NOT NULL,
+  tipo_visitante VARCHAR(80) NOT NULL,
+  cantidad_visitas INT NOT NULL DEFAULT 0,
+  calidad_dato VARCHAR(120) NULL,
+  fuente TEXT NULL,
+  url_fuente TEXT NULL,
+  observacion TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_visitacion_historica_playa FOREIGN KEY (playa_id) REFERENCES playa(id),
+  CONSTRAINT uq_visitacion_playa_anio_tipo UNIQUE (playa_id, anio, tipo_visitante)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS ml_modelo (
+  playa_id INT NOT NULL PRIMARY KEY,
+  activo BOOLEAN NOT NULL DEFAULT FALSE,
+  registros_usados INT NOT NULL DEFAULT 0,
+  mae DECIMAL(10, 2) NULL,
+  rmse DECIMAL(10, 2) NULL,
+  max_depth INT NOT NULL DEFAULT 4,
+  min_samples_split INT NOT NULL DEFAULT 5,
+  min_samples_leaf INT NOT NULL DEFAULT 2,
+  random_state INT NOT NULL DEFAULT 42,
+  ultimo_entrenamiento DATETIME NULL,
+  CONSTRAINT fk_ml_modelo_playa FOREIGN KEY (playa_id) REFERENCES playa(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS aviso_publico (

@@ -113,6 +113,7 @@ class NotificacionServiceTest(TestCase):
         response = mark_notificacion_as_read(
             notificacion_id=notification.id,
             db=cast(Session, fake_db),
+            current_user=SimpleNamespace(id=1),
         )
         self.assertTrue(response.leida)
         self.assertIsNone(notification.deduplication_key)
