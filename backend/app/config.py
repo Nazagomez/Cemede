@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     database_url: str = "mysql+pymysql://root:password@localhost:3306/cemede_capacidad_carga"
     secret_key: str = "change-this-secret-key-in-production"
     access_token_expire_minutes: int = 480
-    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
     api_prefix: str = "/api"
     visitacion_excel_path: str = (
         "/Users/admin/Documents/Universidad/Licenciatura/tesis/registros_visitacion-2000_2024.xlsx"

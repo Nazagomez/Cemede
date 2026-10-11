@@ -21,11 +21,12 @@ def get_dashboard_tendencia(
     db: Session = Depends(get_db),
     _: Usuario = Depends(get_current_user),
 ) -> dict[str, object]:
-    """Get occupancy trend across active beaches for the last N days.
+    """Get occupancy trend across active beaches.
 
-    One point per calendar day per beach: the last estimation recorded
-    that day (estimations are ordered ascending, so later rows overwrite
-    earlier ones for the same date).
+    Uses the last N days when they contain estimations. Otherwise falls
+    back to the most recent N dates that do have data, so imported
+    historical series still render. One point per calendar day per beach:
+    later rows overwrite earlier ones for the same date.
     """
     desde = datetime.utcnow() - timedelta(days=dias)
     playas = db.query(Playa).filter(Playa.activa.is_(True)).all()
@@ -34,15 +35,20 @@ def get_dashboard_tendencia(
     if not playa_nombres:
         return {"dias": dias, "playas": [], "datos": []}
 
-    estimaciones = (
+    historico = (
         db.query(EstimacionCapacidad)
-        .filter(
-            EstimacionCapacidad.playa_id.in_(playa_nombres.keys()),
-            EstimacionCapacidad.fecha_calculo >= desde,
-        )
+        .filter(EstimacionCapacidad.playa_id.in_(playa_nombres.keys()))
         .order_by(EstimacionCapacidad.fecha_calculo.asc())
         .all()
     )
+    recientes = [item for item in historico if item.fecha_calculo >= desde]
+    fechas_recientes = {item.fecha_calculo.date() for item in recientes}
+    if len(fechas_recientes) >= 2:
+        estimaciones = recientes
+    else:
+        fechas = sorted({item.fecha_calculo.date() for item in historico})
+        corte = set(fechas[-dias:])
+        estimaciones = [item for item in historico if item.fecha_calculo.date() in corte]
 
     datos_por_fecha: dict[str, dict[str, float | str]] = {}
     for estimacion in estimaciones:

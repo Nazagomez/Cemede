@@ -1,8 +1,9 @@
 """Visitor registration routes."""
 
-from datetime import date, datetime, time
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_default_registrar_user
@@ -128,9 +129,9 @@ def get_historial_visitantes(
     if playa_id is not None:
         query = query.filter(RegistroVisitante.playa_id == playa_id)
     if fecha_inicio is not None:
-        query = query.filter(RegistroVisitante.fecha_entrada >= datetime.combine(fecha_inicio, time.min))
+        query = query.filter(func.date(RegistroVisitante.fecha_entrada) >= fecha_inicio)
     if fecha_fin is not None:
-        query = query.filter(RegistroVisitante.fecha_entrada <= datetime.combine(fecha_fin, time.max))
+        query = query.filter(func.date(RegistroVisitante.fecha_entrada) <= fecha_fin)
     total = query.count()
     registros = (
         query.order_by(RegistroVisitante.fecha_entrada.desc())

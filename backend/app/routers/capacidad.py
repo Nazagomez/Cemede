@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_optional_current_user
@@ -185,22 +185,26 @@ def get_cce(
 @router.get("/historial/{playa_id}")
 def get_historial(
     playa_id: int,
-    limit: int = 30,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
     db: Session = Depends(get_db),
     _: Usuario = Depends(get_current_user),
 ) -> dict[str, object]:
-    """Get historical capacity estimations."""
+    """Get historical capacity estimations, newest first."""
     _get_playa(db, playa_id)
+    query = db.query(EstimacionCapacidad).filter(EstimacionCapacidad.playa_id == playa_id)
+    total = query.count()
     estimaciones = (
-        db.query(EstimacionCapacidad)
-        .filter(EstimacionCapacidad.playa_id == playa_id)
-        .order_by(EstimacionCapacidad.fecha_calculo.desc())
+        query.order_by(EstimacionCapacidad.fecha_calculo.desc())
+        .offset((page - 1) * limit)
         .limit(limit)
         .all()
     )
     return {
         "playa_id": playa_id,
-        "total": len(estimaciones),
+        "total": total,
+        "page": page,
+        "limit": limit,
         "estimaciones": [
             {
                 "id": item.id,
